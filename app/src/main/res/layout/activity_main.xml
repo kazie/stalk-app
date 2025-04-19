@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="26dp">
+
+    <!-- Input Field -->
+    <EditText
+        android:id="@+id/nameEditText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Enter a name"
+        android:inputType="text"
+        android:importantForAccessibility="yes"
+        android:layout_marginBottom="26dp"/>
+
+    <!-- Start Button -->
+    <Button
+        android:id="@+id/start_button"
+        android:layout_width="363dp"
+        android:layout_height="133dp"
+        android:text="Start stalking"
+        android:textSize="50sp"
+        android:backgroundTint="#009900"
+        android:textColor="@color/white"
+/>
+
+
+</LinearLayout>
