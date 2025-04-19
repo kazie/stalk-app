@@ -1,0 +1,11 @@
+version: 2
+updates:
+  - package-ecosystem: "gradle" # Dependabot will target Gradle dependencies
+    directory: "/"             # Root directory of your project
+    schedule:
+      interval: "weekly"       # Check for updates weekly (other options: daily, monthly)
+    commit-message:
+      prefix: "deps"           # Optional prefix for PR titles, e.g., "deps: Update dependencies"
+    ignore:
+      - dependency-name: "androidx.appcompat:*" # Example: Skip upgrading specific dependencies (optional)
+      - dependency-name: "com.google.guava:*"
