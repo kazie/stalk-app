@@ -7,6 +7,11 @@ android {
     namespace = "se.araisan.stalk.app"
     compileSdk = 35
 
+    buildFeatures {
+        buildConfig = true
+        viewBinding = true
+    }
+
     defaultConfig {
         applicationId = "se.araisan.stalk.app"
         minSdk = 34
@@ -15,10 +20,12 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
 
-    viewBinding {
-        enable = true
+        buildConfigField(
+            "String", "SERVER_URL",
+            // Need to make it have it escaped for code, so making "$result"
+            { System.getenv("SERVER_URL") ?: "http://localhost:8080/api/coords" }.let { "\"$it\"" }
+        )
     }
 
     buildTypes {

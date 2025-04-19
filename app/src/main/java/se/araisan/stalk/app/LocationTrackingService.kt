@@ -117,7 +117,7 @@ class LocationService : Service() {
         serviceScope.launch {
             try {
                 Log.i("LocationService", "Sending location to server")
-                val url = java.net.URL("http://192.168.1.174:8080/api/coords")
+                val url = java.net.URL(BuildConfig.SERVER_URL)
                 with(url.openConnection() as HttpURLConnection) {
                     requestMethod = "POST"
                     setRequestProperty("Content-Type", "application/json")
