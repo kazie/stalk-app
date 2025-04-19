@@ -1,0 +1,50 @@
+name: Android CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout your code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Java (required for Gradle)
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu' # Or 'temurin'
+          java-version: '21'   # Use the appropriate version for your project
+
+      # Step 3: Set up Android SDK
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v2
+        with:
+          api-level: 33                   # Target API level
+          build-tools: 33.0.2             # Build tools version
+          ndk: latest                     # (Optional) Required only if using the NDK
+          cache: gradle
+
+      # Step 4: Install dependencies
+      - name: Gradle dependencies
+        run: ./gradlew dependencies --scan --parallel
+
+      # Step 5: Build the project
+      - name: Build with Gradle
+        run: ./gradlew assembleDebug
+
+      # Step 6: Run tests
+      - name: Run unit tests
+        run: ./gradlew testDebugUnitTest
+
+    # Step 7: Run instrumented tests (Optional)
+    # Uncomment if you have connectedDebugAndroidTest tests
+    # - name: Run instrumented tests
+    #   run: ./gradlew connectedDebugAndroidTest
