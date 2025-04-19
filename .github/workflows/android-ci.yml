@@ -27,8 +27,8 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v2
         with:
-          api-level: 33                   # Target API level
-          build-tools: 33.0.2             # Build tools version
+          api-level: 35                   # Target API level
+          build-tools: 35.0.0             # Build tools version
           ndk: latest                     # (Optional) Required only if using the NDK
           cache: gradle
 
