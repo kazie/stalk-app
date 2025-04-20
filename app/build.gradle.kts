@@ -28,9 +28,23 @@ android {
         )
     }
 
+    signingConfigs {
+        create("release") {
+            keyAlias = "stalk-app"
+            // Fix on release
+            keyPassword = ""
+            // Fix on release
+            storeFile = File("stalk-app-release-key.jks")
+            // Fix on release
+            storePassword = ""
+        }
+    }
+
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
