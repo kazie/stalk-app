@@ -26,6 +26,11 @@ android {
             // Need to make it have it escaped for code, so making "$result"
             "\"${System.getenv("SERVER_URL") ?: "http://localhost:8080/api/coords"}\""
         )
+        buildConfigField(
+            "String", "API_KEY",
+            // Need to make it have it escaped for code, so making "$result"
+            "\"${System.getenv("API_KEY") ?: "INVALID_API_KEY"}\""
+        )
     }
 
     signingConfigs {

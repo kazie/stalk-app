@@ -122,10 +122,13 @@ class LocationService : Service() {
                     requestMethod = "POST"
                     setRequestProperty("Content-Type", "application/json")
                     setRequestProperty("Accept", "application/json")
+                    setRequestProperty("Authorization", "Bearer ${BuildConfig.API_KEY}")
                     doOutput = true
 
-                    outputStream.write(payload.toByteArray())
-                    outputStream.flush()
+                    outputStream.use {
+                        it.write(payload.toByteArray())
+                        it.flush()
+                    }
 
                     if (responseCode == HttpURLConnection.HTTP_OK) {
                         Log.i("LocationService", "Sent successfully!")
