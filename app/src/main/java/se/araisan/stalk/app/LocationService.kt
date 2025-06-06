@@ -103,7 +103,6 @@ class LocationService : Service() {
         val locationRequest =
             LocationRequest
                 .Builder(powerMode, stalkFrequency.toMillis())
-                .setMinUpdateIntervalMillis(stalkFrequency.toMillis())
                 .build()
         fusedLocationClient
             .requestLocationUpdates(locationRequest, locationCallback, mainLooper)
