@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    id("com.diffplug.spotless") version "7.0.4"
 }
 
 android {
@@ -22,14 +23,16 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField(
-            "String", "SERVER_URL",
+            "String",
+            "SERVER_URL",
             // Need to make it have it escaped for code, so making "$result"
-            "\"${System.getenv("SERVER_URL") ?: "http://localhost:8080/api/coords"}\""
+            "\"${System.getenv("SERVER_URL") ?: "http://localhost:8080/api/coords"}\"",
         )
         buildConfigField(
-            "String", "API_KEY",
+            "String",
+            "API_KEY",
             // Need to make it have it escaped for code, so making "$result"
-            "\"${System.getenv("API_KEY") ?: "INVALID_API_KEY"}\""
+            "\"${System.getenv("API_KEY") ?: "INVALID_API_KEY"}\"",
         )
     }
 
@@ -45,14 +48,13 @@ android {
         }
     }
 
-
     buildTypes {
         release {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
         }
     }
@@ -76,4 +78,24 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+}
+
+spotless {
+    kotlin {
+        // Apply the Ktlint formatting rules — you can specify the version
+        ktlint("1.6.0") // Ktlint version
+        target("**/*.kt") // Target all Kotlin files
+        // You can exclude certain files if needed:
+        // targetExclude("build/**/*.kt", "src/main/generated/**/*.kt")
+    }
+
+    kotlinGradle {
+        // For formatting Kotlin code in Gradle build files
+        ktlint("1.6.0")
+        target("**/*.gradle.kts")
+    }
+}
+
+tasks.named("check") {
+    dependsOn("spotlessCheck")
 }

@@ -26,11 +26,9 @@ import java.net.HttpURLConnection
 import java.time.Duration
 
 class LocationService : Service() {
-
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
     private val serviceScope = CoroutineScope(Dispatchers.IO)
-
 
     @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
     override fun onCreate() {
@@ -39,15 +37,16 @@ class LocationService : Service() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
         // Define the location callback
-        locationCallback = object : LocationCallback() {
-            override fun onLocationResult(locationResult: LocationResult) {
-                super.onLocationResult(locationResult)
-                // last location, is most up to date.
-                locationResult.locations.last().let { location ->
-                    sendLocationToServer(location)
+        locationCallback =
+            object : LocationCallback() {
+                override fun onLocationResult(locationResult: LocationResult) {
+                    super.onLocationResult(locationResult)
+                    // last location, is most up to date.
+                    locationResult.locations.last().let { location ->
+                        sendLocationToServer(location)
+                    }
                 }
             }
-        }
 
         startForegroundService()
         startLocationUpdates()
@@ -59,19 +58,22 @@ class LocationService : Service() {
         val notificationManager = getSystemService(NotificationManager::class.java)
 
         // Create a notification channel
-        val channel = NotificationChannel(
-            channelId,
-            "Location Service",
-            NotificationManager.IMPORTANCE_DEFAULT
-        )
+        val channel =
+            NotificationChannel(
+                channelId,
+                "Location Service",
+                NotificationManager.IMPORTANCE_DEFAULT,
+            )
         notificationManager?.createNotificationChannel(channel)
 
         // Create a notification
-        val notification: Notification = NotificationCompat.Builder(this, channelId)
-            .setContentTitle("Location Service")
-            .setContentText("Collecting your location...")
-            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-            .build()
+        val notification: Notification =
+            NotificationCompat
+                .Builder(this, channelId)
+                .setContentTitle("Location Service")
+                .setContentText("Collecting your location...")
+                .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+                .build()
         Log.i("LocationService", "Created notification")
         startForeground(1, notification)
         Log.i("LocationService", "Started foreground service")
@@ -89,17 +91,26 @@ class LocationService : Service() {
 
         Log.i("LocationService", "Starting location updates")
         val sharedPreferences = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        val stalkFrequency = sharedPreferences.getString(APP_PREF_STALK_FREQ, "10s") ?: return
+        val stalkFrequency = sharedPreferences.getString(APP_PREF_STALK_FREQ, "10s")?.asDuration() ?: return
+        val powerMode =
+            if (stalkFrequency <
+                Duration.ofSeconds(30)
+            ) {
+                Priority.PRIORITY_HIGH_ACCURACY
+            } else {
+                Priority.PRIORITY_BALANCED_POWER_ACCURACY
+            }
         val locationRequest =
-            LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, stalkFrequency.asDuration().toMillis())
+            LocationRequest
+                .Builder(powerMode, stalkFrequency.toMillis())
                 .setMinUpdateIntervalMillis(Duration.ofSeconds(1).toMillis())
                 .build()
-        fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, mainLooper)
+        fusedLocationClient
+            .requestLocationUpdates(locationRequest, locationCallback, mainLooper)
             .addOnFailureListener { e ->
                 Log.e("LocationService", "Failed to request location updates", e)
                 stopSelf() // Stop the service if location updates can't be started
             }
-
     }
 
     private fun sendLocationToServer(location: Location) {
@@ -107,7 +118,8 @@ class LocationService : Service() {
         val longitude = location.longitude
         val sharedPreferences = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
         val stalkVictim = sharedPreferences.getString(APP_PREF_USER_NAME, null) ?: return
-        val payload = """
+        val payload =
+            """
             {
                 "name": "$stalkVictim",
                 "latitude": $latitude,
@@ -151,15 +163,14 @@ class LocationService : Service() {
         fusedLocationClient.removeLocationUpdates(locationCallback)
     }
 
-    override fun onBind(intent: Intent?): IBinder? {
-        return null
-    }
+    override fun onBind(intent: Intent?): IBinder? = null
 }
 
-private fun String.asDuration() = when(this) {
-    "1s" -> Duration.ofSeconds(1)
-    "5s" -> Duration.ofSeconds(5)
-    "10s" -> Duration.ofSeconds(10)
-    "30s" -> Duration.ofSeconds(30)
-    else -> Duration.ofSeconds(10)
-}
+private fun String.asDuration() =
+    when (this) {
+        "1s" -> Duration.ofSeconds(1)
+        "5s" -> Duration.ofSeconds(5)
+        "10s" -> Duration.ofSeconds(10)
+        "30s" -> Duration.ofSeconds(30)
+        else -> Duration.ofSeconds(10)
+    }

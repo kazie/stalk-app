@@ -25,38 +25,38 @@ const val APP_PREF_STALK_FREQ = "stalk_frequency"
 const val APP_PREF_USER_NAME = "user_name"
 
 class MainActivity : AppCompatActivity() {
-
     private var isServiceRunning = false // service state.
 
     private lateinit var nameEditText: EditText // Reference to the input field
     private lateinit var toggleButton: Button // Reference to the button
 
-    private val disabledColor = ColorStateList(
-        arrayOf(
-            intArrayOf(-android.R.attr.state_enabled), // Disabled state
-            intArrayOf(android.R.attr.state_pressed),  // Pressed state
-            intArrayOf()                               // Default state
-        ),
-        intArrayOf(
-            "#CCCCCC".toColorInt(),  // Light gray for disabled
-            "#008800".toColorInt(),  // Dark green for pressed
-            "#009900".toColorInt()   // Normal green
+    private val disabledColor =
+        ColorStateList(
+            arrayOf(
+                intArrayOf(-android.R.attr.state_enabled), // Disabled state
+                intArrayOf(android.R.attr.state_pressed), // Pressed state
+                intArrayOf(), // Default state
+            ),
+            intArrayOf(
+                "#CCCCCC".toColorInt(), // Light gray for disabled
+                "#008800".toColorInt(), // Dark green for pressed
+                "#009900".toColorInt(), // Normal green
+            ),
         )
-    )
 
-    private val enabledColor = ColorStateList(
-        arrayOf(
-            intArrayOf(-android.R.attr.state_enabled), // Disabled state
-            intArrayOf(android.R.attr.state_pressed),  // Pressed state
-            intArrayOf()                               // Default state
-        ),
-        intArrayOf(
-            "#CCCCCC".toColorInt(),  // Light gray for disabled
-            "#880000".toColorInt(),  // Dark red for pressed
-            "#990000".toColorInt()   // Normal red
+    private val enabledColor =
+        ColorStateList(
+            arrayOf(
+                intArrayOf(-android.R.attr.state_enabled), // Disabled state
+                intArrayOf(android.R.attr.state_pressed), // Pressed state
+                intArrayOf(), // Default state
+            ),
+            intArrayOf(
+                "#CCCCCC".toColorInt(), // Light gray for disabled
+                "#880000".toColorInt(), // Dark red for pressed
+                "#990000".toColorInt(), // Normal red
+            ),
         )
-    )
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,15 +65,16 @@ class MainActivity : AppCompatActivity() {
 
         val intervalSpinner: Spinner = findViewById(R.id.intervalSpinner)
         // Create an ArrayAdapter using the string array and a simple spinner layout
-        ArrayAdapter.createFromResource(
-            this,
-            R.array.time_intervals,
-            android.R.layout.simple_spinner_item
-        ).also { adapter ->
-            // Specify the layout to use when the list of choices appears
-            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-            intervalSpinner.adapter = adapter
-        }
+        ArrayAdapter
+            .createFromResource(
+                this,
+                R.array.time_intervals,
+                android.R.layout.simple_spinner_item,
+            ).also { adapter ->
+                // Specify the layout to use when the list of choices appears
+                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                intervalSpinner.adapter = adapter
+            }
         // Set a listener to capture selected values and save them in SharedPreferences
         createSpinnerListener(intervalSpinner)
         val savedInterval = getFrequency()
@@ -82,9 +83,6 @@ class MainActivity : AppCompatActivity() {
         if (savedPosition >= 0) {
             intervalSpinner.setSelection(savedPosition)
         }
-
-
-
 
         nameEditText = findViewById(R.id.nameEditText)
         toggleButton = findViewById(R.id.start_button)
@@ -105,46 +103,57 @@ class MainActivity : AppCompatActivity() {
         toggleButton.setOnClickListener {
             buttonClickListener(toggleButton)
         }
-
     }
 
     private fun createSpinnerListener(intervalSpinner: Spinner) {
-        intervalSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(
-                parent: AdapterView<*>,
-                view: View?,
-                position: Int,
-                id: Long
+        intervalSpinner.onItemSelectedListener =
+            object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(
+                    parent: AdapterView<*>,
+                    view: View?,
+                    position: Int,
+                    id: Long,
+                ) {
+                    // Get the selected value
+                    val selectedInterval = parent.getItemAtPosition(position).toString()
+
+                    // Save the selected interval into SharedPreferences
+                    saveFrequency(selectedInterval)
+                }
+
+                override fun onNothingSelected(parent: AdapterView<*>) {
+                    // Handle the case where no selection is made (optional)
+                }
+            }
+    }
+
+    private fun createTextWatcher() =
+        object : TextWatcher {
+            override fun beforeTextChanged(
+                s: CharSequence?,
+                start: Int,
+                count: Int,
+                after: Int,
+            ) {}
+
+            override fun onTextChanged(
+                s: CharSequence?,
+                start: Int,
+                before: Int,
+                count: Int,
             ) {
-                // Get the selected value
-                val selectedInterval = parent.getItemAtPosition(position).toString()
-
-                // Save the selected interval into SharedPreferences
-                saveFrequency(selectedInterval)
+                toggleButton.isEnabled = !s.isNullOrEmpty() // Enable button only when input isn't empty
             }
 
-            override fun onNothingSelected(parent: AdapterView<*>) {
-                // Handle the case where no selection is made (optional)
+            override fun afterTextChanged(s: Editable?) {
+                saveName(s?.toString()) // Save the name in SharedPreferences
             }
         }
-    }
-
-    private fun createTextWatcher() = object : TextWatcher {
-        override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-
-        override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-            toggleButton.isEnabled = !s.isNullOrEmpty() // Enable button only when input isn't empty
-        }
-
-        override fun afterTextChanged(s: Editable?) {
-            saveName(s?.toString()) // Save the name in SharedPreferences
-        }
-    }
 
     private fun buttonClickListener(button: Button) {
         if (!isServiceRunning) {
             Log.d("MainActivity", "Start button clicked") // Verify this log appears
-            if(checkAndRequestPermissions()) {
+            if (checkAndRequestPermissions()) {
                 val intent = Intent(this, LocationService::class.java)
                 startService(intent)
                 isServiceRunning = true
@@ -167,10 +176,14 @@ class MainActivity : AppCompatActivity() {
     private fun checkAndRequestPermissions(): Boolean {
         val permissionsToRequest = mutableListOf<String>()
 
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
             permissionsToRequest.add(android.Manifest.permission.ACCESS_FINE_LOCATION)
         }
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.FOREGROUND_SERVICE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.FOREGROUND_SERVICE_LOCATION) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
             permissionsToRequest.add(android.Manifest.permission.FOREGROUND_SERVICE_LOCATION)
         }
 
@@ -182,17 +195,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private val requestPermissionsLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        permissions.forEach { (permission, isGranted) ->
-            Log.d("MainActivity", "$permission granted: $isGranted")
+    private val requestPermissionsLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions(),
+        ) { permissions ->
+            permissions.forEach { (permission, isGranted) ->
+                Log.d("MainActivity", "$permission granted: $isGranted")
+            }
         }
-    }
 
     // Helper method to save the name input into SharedPreferences
     private fun saveName(name: String?) {
-        if(name == null) return
+        if (name == null) return
         val sharedPreferences = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
         sharedPreferences.edit {
             putString(APP_PREF_USER_NAME, name)
@@ -207,7 +221,7 @@ class MainActivity : AppCompatActivity() {
 
     // Helper method to save the frequency input into SharedPreferences
     private fun saveFrequency(name: String?) {
-        if(name == null) return
+        if (name == null) return
         val sharedPreferences = getSharedPreferences(APP_PREF_STALK_FREQ, Context.MODE_PRIVATE)
         sharedPreferences.edit {
             putString(APP_PREF_STALK_FREQ, name)
@@ -219,6 +233,4 @@ class MainActivity : AppCompatActivity() {
         val sharedPreferences = getSharedPreferences(APP_PREF_STALK_FREQ, Context.MODE_PRIVATE)
         return sharedPreferences.getString(APP_PREF_STALK_FREQ, "10s") ?: "10s"
     }
-
-
 }
