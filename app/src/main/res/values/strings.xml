@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">Stalk App</string>
+    <!-- Other strings -->
+    <string-array name="time_intervals">
+        <item>1s</item>
+        <item>5s</item>
+        <item>10s</item>
+        <item>30s</item>
+    </string-array>
+
 </resources>

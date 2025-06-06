@@ -8,13 +8,21 @@ import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
+import android.view.View
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
+import android.widget.Spinner
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.content.edit
 import androidx.core.graphics.toColorInt
+
+const val APP_PREF_STALK_FREQ = "stalk_frequency"
+const val APP_PREF_USER_NAME = "user_name"
 
 class MainActivity : AppCompatActivity() {
 
@@ -55,6 +63,29 @@ class MainActivity : AppCompatActivity() {
         // Set the content view to the layout XML file
         setContentView(R.layout.activity_main)
 
+        val intervalSpinner: Spinner = findViewById(R.id.intervalSpinner)
+        // Create an ArrayAdapter using the string array and a simple spinner layout
+        ArrayAdapter.createFromResource(
+            this,
+            R.array.time_intervals,
+            android.R.layout.simple_spinner_item
+        ).also { adapter ->
+            // Specify the layout to use when the list of choices appears
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            intervalSpinner.adapter = adapter
+        }
+        // Set a listener to capture selected values and save them in SharedPreferences
+        createSpinnerListener(intervalSpinner)
+        val savedInterval = getFrequency()
+        val items = resources.getStringArray(R.array.time_intervals)
+        val savedPosition = items.indexOf(savedInterval)
+        if (savedPosition >= 0) {
+            intervalSpinner.setSelection(savedPosition)
+        }
+
+
+
+
         nameEditText = findViewById(R.id.nameEditText)
         toggleButton = findViewById(R.id.start_button)
 
@@ -75,6 +106,27 @@ class MainActivity : AppCompatActivity() {
             buttonClickListener(toggleButton)
         }
 
+    }
+
+    private fun createSpinnerListener(intervalSpinner: Spinner) {
+        intervalSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(
+                parent: AdapterView<*>,
+                view: View?,
+                position: Int,
+                id: Long
+            ) {
+                // Get the selected value
+                val selectedInterval = parent.getItemAtPosition(position).toString()
+
+                // Save the selected interval into SharedPreferences
+                saveFrequency(selectedInterval)
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>) {
+                // Handle the case where no selection is made (optional)
+            }
+        }
     }
 
     private fun createTextWatcher() = object : TextWatcher {
@@ -142,16 +194,30 @@ class MainActivity : AppCompatActivity() {
     private fun saveName(name: String?) {
         if(name == null) return
         val sharedPreferences = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        with(sharedPreferences.edit()) {
-            putString("user_name", name)
-            apply()
+        sharedPreferences.edit {
+            putString(APP_PREF_USER_NAME, name)
         }
     }
 
     // Helper method to retrieve the saved name
     private fun getSavedName(): String {
         val sharedPreferences = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        return sharedPreferences.getString("user_name", "") ?: ""
+        return sharedPreferences.getString(APP_PREF_USER_NAME, "") ?: ""
+    }
+
+    // Helper method to save the frequency input into SharedPreferences
+    private fun saveFrequency(name: String?) {
+        if(name == null) return
+        val sharedPreferences = getSharedPreferences(APP_PREF_STALK_FREQ, Context.MODE_PRIVATE)
+        sharedPreferences.edit {
+            putString(APP_PREF_STALK_FREQ, name)
+        }
+    }
+
+    // Helper method to retrieve the saved frequency
+    private fun getFrequency(): String {
+        val sharedPreferences = getSharedPreferences(APP_PREF_STALK_FREQ, Context.MODE_PRIVATE)
+        return sharedPreferences.getString(APP_PREF_STALK_FREQ, "10s") ?: "10s"
     }
 
 

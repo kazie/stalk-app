@@ -88,9 +88,11 @@ class LocationService : Service() {
         }
 
         Log.i("LocationService", "Starting location updates")
+        val sharedPreferences = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        val stalkFrequency = sharedPreferences.getString(APP_PREF_STALK_FREQ, "10s") ?: return
         val locationRequest =
-            LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, Duration.ofSeconds(10).toMillis())
-                .setMinUpdateIntervalMillis(Duration.ofSeconds(5).toMillis())
+            LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, stalkFrequency.asDuration().toMillis())
+                .setMinUpdateIntervalMillis(Duration.ofSeconds(1).toMillis())
                 .build()
         fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, mainLooper)
             .addOnFailureListener { e ->
@@ -104,7 +106,7 @@ class LocationService : Service() {
         val latitude = location.latitude
         val longitude = location.longitude
         val sharedPreferences = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        val stalkVictim = sharedPreferences.getString("user_name", null) ?: return
+        val stalkVictim = sharedPreferences.getString(APP_PREF_USER_NAME, null) ?: return
         val payload = """
             {
                 "name": "$stalkVictim",
@@ -152,4 +154,12 @@ class LocationService : Service() {
     override fun onBind(intent: Intent?): IBinder? {
         return null
     }
+}
+
+private fun String.asDuration() = when(this) {
+    "1s" -> Duration.ofSeconds(1)
+    "5s" -> Duration.ofSeconds(5)
+    "10s" -> Duration.ofSeconds(10)
+    "30s" -> Duration.ofSeconds(30)
+    else -> Duration.ofSeconds(10)
 }
