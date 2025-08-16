@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -62,9 +64,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlinOptions {
-        jvmTarget = "11"
-    }
 }
 
 dependencies {
@@ -83,7 +82,7 @@ dependencies {
 spotless {
     kotlin {
         // Apply the Ktlint formatting rules — you can specify the version
-        ktlint("1.6.0") // Ktlint version
+        ktlint("1.7.1") // Ktlint version
         target("**/*.kt") // Target all Kotlin files
         // You can exclude certain files if needed:
         // targetExclude("build/**/*.kt", "src/main/generated/**/*.kt")
@@ -91,8 +90,15 @@ spotless {
 
     kotlinGradle {
         // For formatting Kotlin code in Gradle build files
-        ktlint("1.6.0")
+        ktlint("1.7.1")
         target("**/*.gradle.kts")
+    }
+}
+
+kotlin {
+    jvmToolchain(11)
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_11)
     }
 }
 
