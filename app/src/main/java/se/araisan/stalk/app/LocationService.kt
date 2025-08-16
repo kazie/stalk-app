@@ -41,9 +41,9 @@ class LocationService : Service() {
             object : LocationCallback() {
                 override fun onLocationResult(locationResult: LocationResult) {
                     super.onLocationResult(locationResult)
-                    // last location, is most up to date.
-                    locationResult.locations.last().let { location ->
-                        sendLocationToServer(location)
+                    // Use the last location if available
+                    locationResult.locations.lastOrNull()?.let {
+                        sendLocationToServer(location = it)
                     }
                 }
             }
@@ -90,8 +90,9 @@ class LocationService : Service() {
         }
 
         Log.i("LocationService", "Starting location updates")
-        val sharedPreferences = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        val stalkFrequency = sharedPreferences.getString(APP_PREF_STALK_FREQ, "10s")?.asDuration() ?: return
+        val sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE)
+        val stalkFrequency =
+            sharedPreferences.getString(APP_PREF_STALK_FREQ, "10s")?.asDuration() ?: return
         val powerMode =
             if (stalkFrequency <
                 Duration.ofSeconds(30)
@@ -115,7 +116,7 @@ class LocationService : Service() {
     private fun sendLocationToServer(location: Location) {
         val latitude = location.latitude
         val longitude = location.longitude
-        val sharedPreferences = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        val sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE)
         val stalkVictim = sharedPreferences.getString(APP_PREF_USER_NAME, null) ?: return
         val payload =
             """

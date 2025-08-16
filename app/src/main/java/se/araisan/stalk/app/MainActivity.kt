@@ -181,6 +181,11 @@ class MainActivity : AppCompatActivity() {
         ) {
             permissionsToRequest.add(android.Manifest.permission.ACCESS_FINE_LOCATION)
         }
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionsToRequest.add(android.Manifest.permission.ACCESS_COARSE_LOCATION)
+        }
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.FOREGROUND_SERVICE_LOCATION) !=
             PackageManager.PERMISSION_GRANTED
         ) {
@@ -207,7 +212,7 @@ class MainActivity : AppCompatActivity() {
     // Helper method to save the name input into SharedPreferences
     private fun saveName(name: String?) {
         if (name == null) return
-        val sharedPreferences = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        val sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE)
         sharedPreferences.edit {
             putString(APP_PREF_USER_NAME, name)
         }
@@ -215,14 +220,14 @@ class MainActivity : AppCompatActivity() {
 
     // Helper method to retrieve the saved name
     private fun getSavedName(): String {
-        val sharedPreferences = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        val sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE)
         return sharedPreferences.getString(APP_PREF_USER_NAME, "") ?: ""
     }
 
     // Helper method to save the frequency input into SharedPreferences
     private fun saveFrequency(name: String?) {
         if (name == null) return
-        val sharedPreferences = getSharedPreferences(APP_PREF_STALK_FREQ, Context.MODE_PRIVATE)
+        val sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE)
         sharedPreferences.edit {
             putString(APP_PREF_STALK_FREQ, name)
         }
@@ -230,7 +235,7 @@ class MainActivity : AppCompatActivity() {
 
     // Helper method to retrieve the saved frequency
     private fun getFrequency(): String {
-        val sharedPreferences = getSharedPreferences(APP_PREF_STALK_FREQ, Context.MODE_PRIVATE)
+        val sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE)
         return sharedPreferences.getString(APP_PREF_STALK_FREQ, "10s") ?: "10s"
     }
 }
