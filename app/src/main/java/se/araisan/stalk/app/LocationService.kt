@@ -34,6 +34,12 @@ class LocationService : Service() {
     override fun onCreate() {
         super.onCreate()
 
+        // Mark service as running
+        getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(APP_PREF_SERVICE_RUNNING, true)
+            .apply()
+
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
         // Define the location callback
@@ -161,6 +167,12 @@ class LocationService : Service() {
         Log.i("LocationService", "Stopping service and removing location updates")
         serviceScope.coroutineContext.cancel() // Cancel pending coroutines
         fusedLocationClient.removeLocationUpdates(locationCallback)
+
+        // Mark service as not running
+        getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(APP_PREF_SERVICE_RUNNING, false)
+            .apply()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

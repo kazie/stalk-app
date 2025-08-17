@@ -23,12 +23,14 @@ import androidx.core.graphics.toColorInt
 
 const val APP_PREF_STALK_FREQ = "stalk_frequency"
 const val APP_PREF_USER_NAME = "user_name"
+const val APP_PREF_SERVICE_RUNNING = "service_running"
 
 class MainActivity : AppCompatActivity() {
     private var isServiceRunning = false // service state.
 
     private lateinit var nameEditText: EditText // Reference to the input field
     private lateinit var toggleButton: Button // Reference to the button
+    private lateinit var intervalSpinner: Spinner // Reference to the frequency spinner
 
     private val disabledColor =
         ColorStateList(
@@ -63,7 +65,7 @@ class MainActivity : AppCompatActivity() {
         // Set the content view to the layout XML file
         setContentView(R.layout.activity_main)
 
-        val intervalSpinner: Spinner = findViewById(R.id.intervalSpinner)
+        intervalSpinner = findViewById(R.id.intervalSpinner)
         // Create an ArrayAdapter using the string array and a simple spinner layout
         ArrayAdapter
             .createFromResource(
@@ -97,11 +99,25 @@ class MainActivity : AppCompatActivity() {
         toggleButton.isEnabled = savedName.isNotEmpty()
         toggleButton.backgroundTintList = this.disabledColor
 
+        // Restore UI state based on whether service is running
+        isServiceRunning = getServiceRunning()
+        updateUiForServiceState()
+
         // Add a TextWatcher to the EditText to detect real-time changes
         nameEditText.addTextChangedListener(createTextWatcher())
 
         toggleButton.setOnClickListener {
             buttonClickListener(toggleButton)
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Refresh UI if service state changed while we were paused
+        val running = getServiceRunning()
+        if (running != isServiceRunning) {
+            isServiceRunning = running
+            updateUiForServiceState()
         }
     }
 
@@ -157,9 +173,8 @@ class MainActivity : AppCompatActivity() {
                 val intent = Intent(this, LocationService::class.java)
                 startService(intent)
                 isServiceRunning = true
-                button.text = "Stop stalking"
-                button.setBackgroundColor(0x990000)
-                button.backgroundTintList = this.enabledColor
+                saveServiceRunning(true)
+                updateUiForServiceState()
             } else {
                 Log.d("MainActivity", "Permissions not granted")
             }
@@ -168,8 +183,8 @@ class MainActivity : AppCompatActivity() {
             val intent = Intent(this, LocationService::class.java)
             stopService(intent)
             isServiceRunning = false
-            button.text = "Start stalking"
-            button.backgroundTintList = this.disabledColor
+            saveServiceRunning(false)
+            updateUiForServiceState()
         }
     }
 
@@ -237,5 +252,32 @@ class MainActivity : AppCompatActivity() {
     private fun getFrequency(): String {
         val sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE)
         return sharedPreferences.getString(APP_PREF_STALK_FREQ, "10s") ?: "10s"
+    }
+
+    private fun saveServiceRunning(running: Boolean) {
+        val sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE)
+        sharedPreferences.edit {
+            putBoolean(APP_PREF_SERVICE_RUNNING, running)
+        }
+    }
+
+    private fun getServiceRunning(): Boolean {
+        val sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE)
+        return sharedPreferences.getBoolean(APP_PREF_SERVICE_RUNNING, false)
+    }
+
+    private fun updateUiForServiceState() {
+        // Toggle button appearance and text
+        if (isServiceRunning) {
+            toggleButton.text = "Stop stalking"
+            toggleButton.backgroundTintList = this.enabledColor
+        } else {
+            toggleButton.text = "Start stalking"
+            toggleButton.backgroundTintList = this.disabledColor
+        }
+
+        // Disable/enable inputs per requirement
+        nameEditText.isEnabled = !isServiceRunning
+        intervalSpinner.isEnabled = !isServiceRunning
     }
 }
