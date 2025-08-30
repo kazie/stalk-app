@@ -22,10 +22,16 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import java.net.HttpURLConnection
 import java.time.Duration
+import androidx.core.content.edit
+import android.app.PendingIntent
 
 class LocationService : Service() {
+    companion object {
+        const val ACTION_STOP = "se.araisan.stalk.app.action.STOP"
+        private const val NOTIFICATION_CHANNEL_ID = "LocationServiceChannel"
+        private const val NOTIFICATION_ID = 1
+    }
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
     private val serviceScope = CoroutineScope(Dispatchers.IO)
@@ -36,9 +42,9 @@ class LocationService : Service() {
 
         // Mark service as running
         getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean(APP_PREF_SERVICE_RUNNING, true)
-            .apply()
+            .edit {
+                putBoolean(APP_PREF_SERVICE_RUNNING, true)
+            }
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
@@ -60,7 +66,7 @@ class LocationService : Service() {
 
     private fun startForegroundService() {
         Log.i("LocationService", "Starting foreground service")
-        val channelId = "LocationServiceChannel"
+        val channelId = NOTIFICATION_CHANNEL_ID
         val notificationManager = getSystemService(NotificationManager::class.java)
 
         // Create a notification channel
@@ -72,16 +78,39 @@ class LocationService : Service() {
             )
         notificationManager?.createNotificationChannel(channel)
 
+        // Deep link to MainActivity when tapping the notification
+        val mainIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val contentPendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            mainIntent,
+            PendingIntent.FLAG_IMMUTABLE,
+        )
+
+        // Action to stop the service from the notification
+        val stopIntent = Intent(this, LocationService::class.java).apply { action = ACTION_STOP }
+        val stopPendingIntent = PendingIntent.getService(
+            this,
+            0,
+            stopIntent,
+            PendingIntent.FLAG_IMMUTABLE,
+        )
+
         // Create a notification
         val notification: Notification =
             NotificationCompat
                 .Builder(this, channelId)
                 .setContentTitle("Location Service")
-                .setContentText("Collecting your location...")
+                .setContentText("Collecting your location in foreground. Tap to manage or stop.")
                 .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+                .setContentIntent(contentPendingIntent)
+                .addAction(android.R.drawable.ic_media_pause, "Stop", stopPendingIntent)
+                .setOngoing(true)
                 .build()
         Log.i("LocationService", "Created notification")
-        startForeground(1, notification)
+        startForeground(NOTIFICATION_ID, notification)
         Log.i("LocationService", "Started foreground service")
     }
 
@@ -120,41 +149,25 @@ class LocationService : Service() {
     }
 
     private fun sendLocationToServer(location: Location) {
-        val latitude = location.latitude
-        val longitude = location.longitude
         val sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE)
         val stalkVictim = sharedPreferences.getString(APP_PREF_USER_NAME, null) ?: return
-        val payload =
-            """
-            {
-                "name": "$stalkVictim",
-                "latitude": $latitude,
-                "longitude": $longitude
-            }
-            """.trimIndent()
+        val latitude = location.latitude
+        val longitude = location.longitude
 
-        // Example using HttpURLConnection (you can replace with Retrofit if needed)
         serviceScope.launch {
             try {
                 Log.i("LocationService", "Sending location to server")
-                val url = java.net.URL(BuildConfig.SERVER_URL)
-                with(url.openConnection() as HttpURLConnection) {
-                    requestMethod = "POST"
-                    setRequestProperty("Content-Type", "application/json")
-                    setRequestProperty("Accept", "application/json")
-                    setRequestProperty("Authorization", "Bearer ${BuildConfig.API_KEY}")
-                    doOutput = true
-
-                    outputStream.use {
-                        it.write(payload.toByteArray())
-                        it.flush()
-                    }
-
-                    if (responseCode == HttpURLConnection.HTTP_OK) {
-                        Log.i("LocationService", "Sent successfully!")
-                    } else {
-                        Log.e("LocationService", "Error: $responseCode")
-                    }
+                val ok = ApiClient.postLocation(stalkVictim, latitude, longitude)
+                if (ok) {
+                    Log.i("LocationService", "Sent successfully!")
+                    // Mark that data exists for this user
+                    getSharedPreferences("app_prefs", MODE_PRIVATE)
+                        .edit {
+                            putString(APP_PREF_LAST_CHECKED_NAME, stalkVictim)
+                                .putBoolean(APP_PREF_DATA_EXISTS, true)
+                        }
+                } else {
+                    Log.e("LocationService", "Error: post failed")
                 }
             } catch (e: Exception) {
                 Log.e("LocationService", "Error sending location to server", e)
@@ -166,13 +179,28 @@ class LocationService : Service() {
         super.onDestroy()
         Log.i("LocationService", "Stopping service and removing location updates")
         serviceScope.coroutineContext.cancel() // Cancel pending coroutines
-        fusedLocationClient.removeLocationUpdates(locationCallback)
+        try {
+            fusedLocationClient.removeLocationUpdates(locationCallback)
+        } catch (t: Throwable) {
+            // ignore if not initialized
+        }
+        stopForeground(STOP_FOREGROUND_REMOVE)
 
         // Mark service as not running
         getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean(APP_PREF_SERVICE_RUNNING, false)
-            .apply()
+            .edit {
+                putBoolean(APP_PREF_SERVICE_RUNNING, false)
+            }
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_STOP) {
+            Log.i("LocationService", "Received ACTION_STOP; stopping foreground and self")
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        return super.onStartCommand(intent, flags, startId)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
