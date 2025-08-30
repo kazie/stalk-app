@@ -67,6 +67,8 @@ class MainActivity : AppCompatActivity() {
         )
 
     private val neutralDisabledColor = ColorStateList.valueOf("#666666".toColorInt())
+    // Single-color red tint to use even when the button is disabled
+    private val redAlwaysColor = ColorStateList.valueOf("#990000".toColorInt())
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var pendingCheck: Runnable? = null
@@ -307,17 +309,27 @@ class MainActivity : AppCompatActivity() {
     private fun updateDeleteButtonEnabled() {
         val currentName = nameEditText.text?.toString() ?: ""
         val enabled = computeDeleteEnabled(currentName)
+        val red = computeDeleteTintRed()
         deleteButton.isEnabled = enabled
-        deleteButton.backgroundTintList = if (enabled) enabledColor else neutralDisabledColor
+        // Color (red) is independent from enabled: red if data exists or we have been running stalk
+        deleteButton.backgroundTintList = when {
+            red  -> redAlwaysColor
+            else -> neutralDisabledColor
+        }
     }
 
     private fun computeDeleteEnabled(currentName: String): Boolean {
-        if (currentName.isEmpty()) return false
-        if (isServiceRunning) return false
+        // Enabled if there is data AND we are currently not running stalk
         val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
-        val last = prefs.getString(APP_PREF_LAST_CHECKED_NAME, null)
         val exists = prefs.getBoolean(APP_PREF_DATA_EXISTS, false)
-        return last == currentName && exists
+        return exists && !isServiceRunning
+    }
+
+    private fun computeDeleteTintRed(): Boolean {
+        // Red if there is data
+        val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
+        val exists = prefs.getBoolean(APP_PREF_DATA_EXISTS, false)
+        return exists
     }
 
     private fun scheduleExistenceCheckDebounced() {
@@ -347,13 +359,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun onDeleteClicked() {
-        val name = nameEditText.text?.toString()?.trim().orEmpty()
-        if (name.isEmpty() || !deleteButton.isEnabled) return
+        // Delete for the name we know has data (last checked); fall back to current text if absent
+        val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
+        val nameToDelete = prefs.getString(APP_PREF_LAST_CHECKED_NAME, null)
+            ?: nameEditText.text?.toString()?.trim().orEmpty()
+        if (nameToDelete.isEmpty() || !deleteButton.isEnabled) return
         deleteButton.isEnabled = false
         Thread {
-            val ok = ApiClient.deleteUserData(name)
+            val ok = ApiClient.deleteUserData(nameToDelete)
             if (ok) {
-                saveDataExistence(name, false)
+                // On successful delete, mark no data and clear has-run flag
+                saveDataExistence(nameToDelete, false)
             }
             runOnUiThread {
                 if (ok) {
