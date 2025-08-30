@@ -23,6 +23,12 @@ import androidx.core.graphics.toColorInt
 import android.widget.Toast
 import android.os.Handler
 import android.os.Looper
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 const val APP_PREF_STALK_FREQ = "stalk_frequency"
 const val APP_PREF_USER_NAME = "user_name"
@@ -72,6 +78,8 @@ class MainActivity : AppCompatActivity() {
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var pendingCheck: Runnable? = null
+
+    private var existenceJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -333,21 +341,21 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun scheduleExistenceCheckDebounced() {
-        pendingCheck?.let { mainHandler.removeCallbacks(it) }
-        val runnable = Runnable {
+        // Cancel previous debounce job if any
+        existenceJob?.cancel()
+        existenceJob = lifecycleScope.launch(Dispatchers.Main) {
+            delay(500)
             val name = nameEditText.text?.toString() ?: ""
             if (name.isEmpty() || isServiceRunning) {
-                runOnUiThread { updateDeleteButtonEnabled() }
-                return@Runnable
+                updateDeleteButtonEnabled()
+                return@launch
             }
-            Thread {
-                val exists = ApiClient.checkUserHasData(name)
-                saveDataExistence(name, exists)
-                runOnUiThread { updateDeleteButtonEnabled() }
-            }.start()
+            val exists = withContext(Dispatchers.IO) {
+                ApiClient.checkUserHasData(name)
+            }
+            saveDataExistence(name, exists)
+            updateDeleteButtonEnabled()
         }
-        pendingCheck = runnable
-        mainHandler.postDelayed(runnable, 500)
     }
 
     private fun saveDataExistence(name: String, exists: Boolean) {
@@ -365,20 +373,20 @@ class MainActivity : AppCompatActivity() {
             ?: nameEditText.text?.toString()?.trim().orEmpty()
         if (nameToDelete.isEmpty() || !deleteButton.isEnabled) return
         deleteButton.isEnabled = false
-        Thread {
-            val ok = ApiClient.deleteUserData(nameToDelete)
+        lifecycleScope.launch(Dispatchers.Main) {
+            val ok = withContext(Dispatchers.IO) {
+                ApiClient.deleteUserData(nameToDelete)
+            }
             if (ok) {
-                // On successful delete, mark no data and clear has-run flag
+                // On successful delete, mark no data
                 saveDataExistence(nameToDelete, false)
             }
-            runOnUiThread {
-                if (ok) {
-                    Toast.makeText(this, "Deleted data", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this, "Delete failed", Toast.LENGTH_SHORT).show()
-                }
-                updateDeleteButtonEnabled()
+            if (ok) {
+                Toast.makeText(this@MainActivity, "Deleted data", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this@MainActivity, "Delete failed", Toast.LENGTH_SHORT).show()
             }
-        }.start()
+            updateDeleteButtonEnabled()
+        }
     }
 }
