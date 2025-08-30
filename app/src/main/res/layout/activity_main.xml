@@ -4,37 +4,55 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:gravity="center"
     android:padding="26dp">
 
-    <!-- Input Field -->
-    <EditText
-        android:id="@+id/nameEditText"
+    <!-- Content area that acts like a spacer (expands upward) -->
+    <LinearLayout
+        android:id="@+id/contentContainer"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="Enter a name"
-        android:inputType="text"
-        android:importantForAccessibility="yes"
-        android:layout_marginBottom="36dp"/>
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:orientation="vertical">
 
-    <!-- Start Button -->
+        <!-- Input Field -->
+        <EditText
+            android:id="@+id/nameEditText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="36dp"
+            android:hint="Enter a name"
+            android:importantForAccessibility="yes"
+            android:inputType="text" />
+
+        <!-- Start Button -->
+        <Button
+            android:id="@+id/start_button"
+            android:layout_width="363dp"
+            android:layout_height="133dp"
+            android:backgroundTint="#009900"
+            android:text="Start stalking"
+            android:textColor="@color/white"
+            android:textSize="50sp" />
+
+        <!-- Spinner for time intervals -->
+        <Spinner
+            android:id="@+id/intervalSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="36dp" />
+    </LinearLayout>
+
+    <!-- Bottom-aligned button -->
     <Button
-        android:id="@+id/start_button"
-        android:layout_width="363dp"
-        android:layout_height="133dp"
-        android:text="Start stalking"
-        android:textSize="50sp"
-        android:backgroundTint="#009900"
-        android:textColor="@color/white" />
-
-    <!-- Spinner for time intervals -->
-    <Spinner
-        android:id="@+id/intervalSpinner"
-        android:layout_width="match_parent"
+        android:id="@+id/delete_button"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="36dp" />
-
-    />
-
-
+        android:layout_gravity="center_horizontal"
+        android:backgroundTint="#666666"
+        android:contentDescription="Delete my data"
+        android:enabled="false"
+        android:text="🗑️"
+        android:textColor="@color/white"
+        android:textSize="32sp" />
 </LinearLayout>

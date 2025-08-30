@@ -22,8 +22,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import java.net.HttpURLConnection
 import java.time.Duration
+import androidx.core.content.edit
 
 class LocationService : Service() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
@@ -36,9 +36,9 @@ class LocationService : Service() {
 
         // Mark service as running
         getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean(APP_PREF_SERVICE_RUNNING, true)
-            .apply()
+            .edit {
+                putBoolean(APP_PREF_SERVICE_RUNNING, true)
+            }
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
@@ -120,41 +120,25 @@ class LocationService : Service() {
     }
 
     private fun sendLocationToServer(location: Location) {
-        val latitude = location.latitude
-        val longitude = location.longitude
         val sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE)
         val stalkVictim = sharedPreferences.getString(APP_PREF_USER_NAME, null) ?: return
-        val payload =
-            """
-            {
-                "name": "$stalkVictim",
-                "latitude": $latitude,
-                "longitude": $longitude
-            }
-            """.trimIndent()
+        val latitude = location.latitude
+        val longitude = location.longitude
 
-        // Example using HttpURLConnection (you can replace with Retrofit if needed)
         serviceScope.launch {
             try {
                 Log.i("LocationService", "Sending location to server")
-                val url = java.net.URL(BuildConfig.SERVER_URL)
-                with(url.openConnection() as HttpURLConnection) {
-                    requestMethod = "POST"
-                    setRequestProperty("Content-Type", "application/json")
-                    setRequestProperty("Accept", "application/json")
-                    setRequestProperty("Authorization", "Bearer ${BuildConfig.API_KEY}")
-                    doOutput = true
-
-                    outputStream.use {
-                        it.write(payload.toByteArray())
-                        it.flush()
-                    }
-
-                    if (responseCode == HttpURLConnection.HTTP_OK) {
-                        Log.i("LocationService", "Sent successfully!")
-                    } else {
-                        Log.e("LocationService", "Error: $responseCode")
-                    }
+                val ok = ApiClient.postLocation(stalkVictim, latitude, longitude)
+                if (ok) {
+                    Log.i("LocationService", "Sent successfully!")
+                    // Mark that data exists for this user
+                    getSharedPreferences("app_prefs", MODE_PRIVATE)
+                        .edit {
+                            putString(APP_PREF_LAST_CHECKED_NAME, stalkVictim)
+                                .putBoolean(APP_PREF_DATA_EXISTS, true)
+                        }
+                } else {
+                    Log.e("LocationService", "Error: post failed")
                 }
             } catch (e: Exception) {
                 Log.e("LocationService", "Error sending location to server", e)
@@ -170,9 +154,9 @@ class LocationService : Service() {
 
         // Mark service as not running
         getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean(APP_PREF_SERVICE_RUNNING, false)
-            .apply()
+            .edit {
+                putBoolean(APP_PREF_SERVICE_RUNNING, false)
+            }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

@@ -20,10 +20,15 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.edit
 import androidx.core.graphics.toColorInt
+import android.widget.Toast
+import android.os.Handler
+import android.os.Looper
 
 const val APP_PREF_STALK_FREQ = "stalk_frequency"
 const val APP_PREF_USER_NAME = "user_name"
 const val APP_PREF_SERVICE_RUNNING = "service_running"
+const val APP_PREF_DATA_EXISTS = "data_exists"
+const val APP_PREF_LAST_CHECKED_NAME = "last_checked_name"
 
 class MainActivity : AppCompatActivity() {
     private var isServiceRunning = false // service state.
@@ -31,6 +36,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var nameEditText: EditText // Reference to the input field
     private lateinit var toggleButton: Button // Reference to the button
     private lateinit var intervalSpinner: Spinner // Reference to the frequency spinner
+    private lateinit var deleteButton: Button // Delete my data button
 
     private val disabledColor =
         ColorStateList(
@@ -60,6 +66,11 @@ class MainActivity : AppCompatActivity() {
             ),
         )
 
+    private val neutralDisabledColor = ColorStateList.valueOf("#666666".toColorInt())
+
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var pendingCheck: Runnable? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Set the content view to the layout XML file
@@ -88,6 +99,7 @@ class MainActivity : AppCompatActivity() {
 
         nameEditText = findViewById(R.id.nameEditText)
         toggleButton = findViewById(R.id.start_button)
+        deleteButton = findViewById(R.id.delete_button)
 
         enableEdgeToEdge()
 
@@ -101,6 +113,8 @@ class MainActivity : AppCompatActivity() {
 
         // Restore UI state based on whether service is running
         isServiceRunning = getServiceRunning()
+
+        // Initialize delete button state
         updateUiForServiceState()
 
         // Add a TextWatcher to the EditText to detect real-time changes
@@ -108,6 +122,10 @@ class MainActivity : AppCompatActivity() {
 
         toggleButton.setOnClickListener {
             buttonClickListener(toggleButton)
+        }
+
+        deleteButton.setOnClickListener {
+            onDeleteClicked()
         }
     }
 
@@ -159,6 +177,8 @@ class MainActivity : AppCompatActivity() {
                 count: Int,
             ) {
                 toggleButton.isEnabled = !s.isNullOrEmpty() // Enable button only when input isn't empty
+                // Debounce existence check on name change when not running
+                scheduleExistenceCheckDebounced()
             }
 
             override fun afterTextChanged(s: Editable?) {
@@ -279,5 +299,70 @@ class MainActivity : AppCompatActivity() {
         // Disable/enable inputs per requirement
         nameEditText.isEnabled = !isServiceRunning
         intervalSpinner.isEnabled = !isServiceRunning
+
+        // Update delete button enablement and tint
+        updateDeleteButtonEnabled()
+    }
+
+    private fun updateDeleteButtonEnabled() {
+        val currentName = nameEditText.text?.toString() ?: ""
+        val enabled = computeDeleteEnabled(currentName)
+        deleteButton.isEnabled = enabled
+        deleteButton.backgroundTintList = if (enabled) enabledColor else neutralDisabledColor
+    }
+
+    private fun computeDeleteEnabled(currentName: String): Boolean {
+        if (currentName.isEmpty()) return false
+        if (isServiceRunning) return false
+        val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
+        val last = prefs.getString(APP_PREF_LAST_CHECKED_NAME, null)
+        val exists = prefs.getBoolean(APP_PREF_DATA_EXISTS, false)
+        return last == currentName && exists
+    }
+
+    private fun scheduleExistenceCheckDebounced() {
+        pendingCheck?.let { mainHandler.removeCallbacks(it) }
+        val runnable = Runnable {
+            val name = nameEditText.text?.toString() ?: ""
+            if (name.isEmpty() || isServiceRunning) {
+                runOnUiThread { updateDeleteButtonEnabled() }
+                return@Runnable
+            }
+            Thread {
+                val exists = ApiClient.checkUserHasData(name)
+                saveDataExistence(name, exists)
+                runOnUiThread { updateDeleteButtonEnabled() }
+            }.start()
+        }
+        pendingCheck = runnable
+        mainHandler.postDelayed(runnable, 500)
+    }
+
+    private fun saveDataExistence(name: String, exists: Boolean) {
+        val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
+        prefs.edit {
+            putString(APP_PREF_LAST_CHECKED_NAME, name)
+            putBoolean(APP_PREF_DATA_EXISTS, exists)
+        }
+    }
+
+    private fun onDeleteClicked() {
+        val name = nameEditText.text?.toString()?.trim().orEmpty()
+        if (name.isEmpty() || !deleteButton.isEnabled) return
+        deleteButton.isEnabled = false
+        Thread {
+            val ok = ApiClient.deleteUserData(name)
+            if (ok) {
+                saveDataExistence(name, false)
+            }
+            runOnUiThread {
+                if (ok) {
+                    Toast.makeText(this, "Deleted data", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, "Delete failed", Toast.LENGTH_SHORT).show()
+                }
+                updateDeleteButtonEnabled()
+            }
+        }.start()
     }
 }
