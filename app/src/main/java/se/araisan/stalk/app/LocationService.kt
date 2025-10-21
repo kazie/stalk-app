@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -12,6 +13,7 @@ import android.os.IBinder
 import android.util.Log
 import androidx.annotation.RequiresPermission
 import androidx.core.app.NotificationCompat
+import androidx.core.content.edit
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -23,8 +25,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import java.time.Duration
-import androidx.core.content.edit
-import android.app.PendingIntent
 
 class LocationService : Service() {
     companion object {
@@ -32,6 +32,7 @@ class LocationService : Service() {
         private const val NOTIFICATION_CHANNEL_ID = "LocationServiceChannel"
         private const val NOTIFICATION_ID = 1
     }
+
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
     private val serviceScope = CoroutineScope(Dispatchers.IO)
@@ -79,24 +80,27 @@ class LocationService : Service() {
         notificationManager?.createNotificationChannel(channel)
 
         // Deep link to MainActivity when tapping the notification
-        val mainIntent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
-        val contentPendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            mainIntent,
-            PendingIntent.FLAG_IMMUTABLE,
-        )
+        val mainIntent =
+            Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+        val contentPendingIntent =
+            PendingIntent.getActivity(
+                this,
+                0,
+                mainIntent,
+                PendingIntent.FLAG_IMMUTABLE,
+            )
 
         // Action to stop the service from the notification
         val stopIntent = Intent(this, LocationService::class.java).apply { action = ACTION_STOP }
-        val stopPendingIntent = PendingIntent.getService(
-            this,
-            0,
-            stopIntent,
-            PendingIntent.FLAG_IMMUTABLE,
-        )
+        val stopPendingIntent =
+            PendingIntent.getService(
+                this,
+                0,
+                stopIntent,
+                PendingIntent.FLAG_IMMUTABLE,
+            )
 
         // Create a notification
         val notification: Notification =
@@ -193,7 +197,11 @@ class LocationService : Service() {
             }
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    override fun onStartCommand(
+        intent: Intent?,
+        flags: Int,
+        startId: Int,
+    ): Int {
         if (intent?.action == ACTION_STOP) {
             Log.i("LocationService", "Received ACTION_STOP; stopping foreground and self")
             stopForeground(STOP_FOREGROUND_REMOVE)

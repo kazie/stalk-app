@@ -7,7 +7,6 @@ import java.lang.reflect.Method
 import java.time.Duration
 
 class AsDurationTest {
-
     private lateinit var asDurationMethod: Method
 
     @Before

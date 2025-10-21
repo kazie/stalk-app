@@ -5,7 +5,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BuildConfigTest {
-
     @Test
     fun serverUrl_and_apiKey_arePresent_andSane() {
         assertNotNull(BuildConfig.SERVER_URL)

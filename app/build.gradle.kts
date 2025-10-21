@@ -3,12 +3,12 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    id("com.diffplug.spotless") version "7.2.1"
+    id("com.diffplug.spotless") version "8.0.0"
 }
 
 android {
     namespace = "se.araisan.stalk.app"
-    compileSdk = 35
+    compileSdk = 36
 
     buildFeatures {
         buildConfig = true
@@ -18,7 +18,7 @@ android {
     defaultConfig {
         applicationId = "se.araisan.stalk.app"
         minSdk = 34
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 4
         versionName = "1.3"
 

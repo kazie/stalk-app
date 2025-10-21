@@ -1,10 +1,11 @@
 package se.araisan.stalk.app
 
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
@@ -14,15 +15,13 @@ import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Spinner
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.edit
 import androidx.core.graphics.toColorInt
-import android.widget.Toast
-import android.os.Handler
-import android.os.Looper
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -73,6 +72,7 @@ class MainActivity : AppCompatActivity() {
         )
 
     private val neutralDisabledColor = ColorStateList.valueOf("#666666".toColorInt())
+
     // Single-color red tint to use even when the button is disabled
     private val redAlwaysColor = ColorStateList.valueOf("#990000".toColorInt())
 
@@ -320,10 +320,11 @@ class MainActivity : AppCompatActivity() {
         val red = computeDeleteTintRed()
         deleteButton.isEnabled = enabled
         // Color (red) is independent from enabled: red if data exists or we have been running stalk
-        deleteButton.backgroundTintList = when {
-            red  -> redAlwaysColor
-            else -> neutralDisabledColor
-        }
+        deleteButton.backgroundTintList =
+            when {
+                red -> redAlwaysColor
+                else -> neutralDisabledColor
+            }
     }
 
     private fun computeDeleteEnabled(currentName: String): Boolean {
@@ -343,22 +344,27 @@ class MainActivity : AppCompatActivity() {
     private fun scheduleExistenceCheckDebounced() {
         // Cancel previous debounce job if any
         existenceJob?.cancel()
-        existenceJob = lifecycleScope.launch(Dispatchers.Main) {
-            delay(500)
-            val name = nameEditText.text?.toString() ?: ""
-            if (name.isEmpty() || isServiceRunning) {
+        existenceJob =
+            lifecycleScope.launch(Dispatchers.Main) {
+                delay(500)
+                val name = nameEditText.text?.toString() ?: ""
+                if (name.isEmpty() || isServiceRunning) {
+                    updateDeleteButtonEnabled()
+                    return@launch
+                }
+                val exists =
+                    withContext(Dispatchers.IO) {
+                        ApiClient.checkUserHasData(name)
+                    }
+                saveDataExistence(name, exists)
                 updateDeleteButtonEnabled()
-                return@launch
             }
-            val exists = withContext(Dispatchers.IO) {
-                ApiClient.checkUserHasData(name)
-            }
-            saveDataExistence(name, exists)
-            updateDeleteButtonEnabled()
-        }
     }
 
-    private fun saveDataExistence(name: String, exists: Boolean) {
+    private fun saveDataExistence(
+        name: String,
+        exists: Boolean,
+    ) {
         val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
         prefs.edit {
             putString(APP_PREF_LAST_CHECKED_NAME, name)
@@ -369,14 +375,19 @@ class MainActivity : AppCompatActivity() {
     private fun onDeleteClicked() {
         // Delete for the name we know has data (last checked); fall back to current text if absent
         val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
-        val nameToDelete = prefs.getString(APP_PREF_LAST_CHECKED_NAME, null)
-            ?: nameEditText.text?.toString()?.trim().orEmpty()
+        val nameToDelete =
+            prefs.getString(APP_PREF_LAST_CHECKED_NAME, null)
+                ?: nameEditText.text
+                    ?.toString()
+                    ?.trim()
+                    .orEmpty()
         if (nameToDelete.isEmpty() || !deleteButton.isEnabled) return
         deleteButton.isEnabled = false
         lifecycleScope.launch(Dispatchers.Main) {
-            val ok = withContext(Dispatchers.IO) {
-                ApiClient.deleteUserData(nameToDelete)
-            }
+            val ok =
+                withContext(Dispatchers.IO) {
+                    ApiClient.deleteUserData(nameToDelete)
+                }
             if (ok) {
                 // On successful delete, mark no data
                 saveDataExistence(nameToDelete, false)
