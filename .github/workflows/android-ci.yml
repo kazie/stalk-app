@@ -24,14 +24,14 @@ jobs:
         uses: actions/setup-java@v3
         with:
           distribution: 'zulu' # Or 'temurin'
-          java-version: '21'   # Use the appropriate version for your project
+          java-version: '17'   # Project targets JDK 17
 
       # Step 3: Set up Android SDK
       - name: Set up Android SDK
         uses: android-actions/setup-android@v2
         with:
-          api-level: 35                   # Target API level
-          build-tools: 35.0.0             # Build tools version
+          api-level: 36                   # Target API level
+          build-tools: 36.0.0             # Build tools version
           ndk: latest                     # (Optional) Required only if using the NDK
           cache: gradle
 
