@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "se.araisan.stalk.app"
-    compileSdk = 36
+    compileSdk = 37
 
     buildFeatures {
         buildConfig = true
@@ -17,7 +17,7 @@ android {
     defaultConfig {
         applicationId = "se.araisan.stalk.app"
         minSdk = 34
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 5
         versionName = "1.4"
 
