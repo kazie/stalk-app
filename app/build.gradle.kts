@@ -2,7 +2,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.application)
-    id("com.diffplug.spotless") version "8.10.1"
+    id("com.diffplug.spotless") version "8.10.2"
 }
 
 android {
