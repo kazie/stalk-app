@@ -4,8 +4,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
@@ -43,7 +41,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var intervalSpinner: Spinner // Reference to the frequency spinner
     private lateinit var deleteButton: Button // Delete my data button
 
-    private val disabledColor =
+    // Toggle button color states: idle/"Start stalking" is green, running/"Stop stalking" is red
+    private val idleStateColor =
         ColorStateList(
             arrayOf(
                 intArrayOf(-android.R.attr.state_enabled), // Disabled state
@@ -57,7 +56,7 @@ class MainActivity : AppCompatActivity() {
             ),
         )
 
-    private val enabledColor =
+    private val runningStateColor =
         ColorStateList(
             arrayOf(
                 intArrayOf(-android.R.attr.state_enabled), // Disabled state
@@ -75,9 +74,6 @@ class MainActivity : AppCompatActivity() {
 
     // Single-color red tint to use even when the button is disabled
     private val redAlwaysColor = ColorStateList.valueOf("#990000".toColorInt())
-
-    private val mainHandler = Handler(Looper.getMainLooper())
-    private var pendingCheck: Runnable? = null
 
     private var existenceJob: Job? = null
 
@@ -119,7 +115,7 @@ class MainActivity : AppCompatActivity() {
 
         // Enable the button if there's already a valid input
         toggleButton.isEnabled = savedName.isNotEmpty()
-        toggleButton.backgroundTintList = this.disabledColor
+        toggleButton.backgroundTintList = this.idleStateColor
 
         // Restore UI state based on whether service is running
         isServiceRunning = getServiceRunning()
@@ -264,53 +260,41 @@ class MainActivity : AppCompatActivity() {
     // Helper method to save the name input into SharedPreferences
     private fun saveName(name: String?) {
         if (name == null) return
-        val sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE)
-        sharedPreferences.edit {
+        appPrefs().edit {
             putString(APP_PREF_USER_NAME, name)
         }
     }
 
     // Helper method to retrieve the saved name
-    private fun getSavedName(): String {
-        val sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE)
-        return sharedPreferences.getString(APP_PREF_USER_NAME, "") ?: ""
-    }
+    private fun getSavedName(): String = appPrefs().getString(APP_PREF_USER_NAME, "") ?: ""
 
     // Helper method to save the frequency input into SharedPreferences
     private fun saveFrequency(name: String?) {
         if (name == null) return
-        val sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE)
-        sharedPreferences.edit {
+        appPrefs().edit {
             putString(APP_PREF_STALK_FREQ, name)
         }
     }
 
     // Helper method to retrieve the saved frequency
-    private fun getFrequency(): String {
-        val sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE)
-        return sharedPreferences.getString(APP_PREF_STALK_FREQ, "10s") ?: "10s"
-    }
+    private fun getFrequency(): String = appPrefs().getString(APP_PREF_STALK_FREQ, "10s") ?: "10s"
 
     private fun saveServiceRunning(running: Boolean) {
-        val sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE)
-        sharedPreferences.edit {
+        appPrefs().edit {
             putBoolean(APP_PREF_SERVICE_RUNNING, running)
         }
     }
 
-    private fun getServiceRunning(): Boolean {
-        val sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE)
-        return sharedPreferences.getBoolean(APP_PREF_SERVICE_RUNNING, false)
-    }
+    private fun getServiceRunning(): Boolean = appPrefs().getBoolean(APP_PREF_SERVICE_RUNNING, false)
 
     private fun updateUiForServiceState() {
         // Toggle button appearance and text
         if (isServiceRunning) {
             toggleButton.text = "Stop stalking"
-            toggleButton.backgroundTintList = this.enabledColor
+            toggleButton.backgroundTintList = this.runningStateColor
         } else {
             toggleButton.text = "Start stalking"
-            toggleButton.backgroundTintList = this.disabledColor
+            toggleButton.backgroundTintList = this.idleStateColor
         }
 
         // Disable/enable inputs per requirement
@@ -322,30 +306,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateDeleteButtonEnabled() {
-        val currentName = nameEditText.text?.toString() ?: ""
-        val enabled = computeDeleteEnabled(currentName)
-        val red = computeDeleteTintRed()
-        deleteButton.isEnabled = enabled
-        // Color (red) is independent from enabled: red if data exists or we have been running stalk
+        // Enabled only when there is data AND we are currently not running stalk;
+        // tint is red whenever data exists, independent of enablement.
+        val exists = appPrefs().getBoolean(APP_PREF_DATA_EXISTS, false)
+        deleteButton.isEnabled = exists && !isServiceRunning
         deleteButton.backgroundTintList =
             when {
-                red -> redAlwaysColor
+                exists -> redAlwaysColor
                 else -> neutralDisabledColor
             }
-    }
-
-    private fun computeDeleteEnabled(currentName: String): Boolean {
-        // Enabled if there is data AND we are currently not running stalk
-        val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
-        val exists = prefs.getBoolean(APP_PREF_DATA_EXISTS, false)
-        return exists && !isServiceRunning
-    }
-
-    private fun computeDeleteTintRed(): Boolean {
-        // Red if there is data
-        val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
-        val exists = prefs.getBoolean(APP_PREF_DATA_EXISTS, false)
-        return exists
     }
 
     private fun scheduleExistenceCheckDebounced() {
@@ -372,8 +341,7 @@ class MainActivity : AppCompatActivity() {
         name: String,
         exists: Boolean,
     ) {
-        val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
-        prefs.edit {
+        appPrefs().edit {
             putString(APP_PREF_LAST_CHECKED_NAME, name)
             putBoolean(APP_PREF_DATA_EXISTS, exists)
         }
@@ -381,9 +349,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun onDeleteClicked() {
         // Delete for the name we know has data (last checked); fall back to current text if absent
-        val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
         val nameToDelete =
-            prefs.getString(APP_PREF_LAST_CHECKED_NAME, null)
+            appPrefs().getString(APP_PREF_LAST_CHECKED_NAME, null)
                 ?: nameEditText.text
                     ?.toString()
                     ?.trim()
