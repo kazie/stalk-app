@@ -21,8 +21,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="36dp"
-            android:hint="Enter a name"
+            android:hint="@string/name_hint"
             android:importantForAccessibility="yes"
+            android:importantForAutofill="no"
             android:inputType="text" />
 
         <!-- Start Button -->
@@ -31,7 +32,7 @@
             android:layout_width="363dp"
             android:layout_height="133dp"
             android:backgroundTint="#009900"
-            android:text="Start stalking"
+            android:text="@string/start_stalking"
             android:textColor="@color/white"
             android:textSize="50sp" />
 
@@ -50,9 +51,9 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal"
         android:backgroundTint="#666666"
-        android:contentDescription="Delete my data"
+        android:contentDescription="@string/delete_my_data"
         android:enabled="false"
-        android:text="🗑️"
+        android:text="@string/delete_button_icon"
         android:textColor="@color/white"
         android:textSize="32sp" />
 </LinearLayout>

@@ -2,7 +2,9 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.serialization)
     id("com.diffplug.spotless") version "8.10.2"
+    alias(libs.plugins.kover)
 }
 
 android {
@@ -63,6 +65,16 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    testOptions {
+        unitTests {
+            isReturnDefaultValues = true
+            isIncludeAndroidResources = true
+            all {
+                it.useJUnitPlatform()
+            }
+        }
+    }
 }
 
 dependencies {
@@ -74,9 +86,19 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.play.services.location)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.kotlinx.serialization.converter)
+    implementation(libs.okhttp)
+    implementation(libs.kotlinx.serialization.json)
+    testImplementation(libs.mockwebserver3)
+    testImplementation(libs.kotest.runner.junit5)
+    testImplementation(libs.kotest.assertions.core)
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testRuntimeOnly(libs.junit.vintage.engine)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.mockwebserver3)
 }
 
 spotless {
@@ -103,5 +125,20 @@ kotlin {
 }
 
 tasks.named("check") {
-    dependsOn("spotlessCheck")
+    dependsOn("spotlessCheck", "koverHtmlReportDebug", "koverLogDebug")
+}
+
+kover {
+    reports {
+        filters {
+            excludes {
+                // kotlinx.serialization @Serializable DTO: only compiler-generated
+                // equals/hashCode/toString/copy/component/serializer, no real logic.
+                classes("se.araisan.stalk.app.LocationPayload*")
+                // Android/view-binding generated code: no logic of ours to test.
+                classes("se.araisan.stalk.app.BuildConfig")
+                packages("se.araisan.stalk.app.databinding")
+            }
+        }
+    }
 }

@@ -6,7 +6,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
-import android.content.Context
 import android.content.Intent
 import android.location.Location
 import android.os.IBinder
@@ -42,10 +41,9 @@ class LocationService : Service() {
         super.onCreate()
 
         // Mark service as running
-        getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-            .edit {
-                putBoolean(APP_PREF_SERVICE_RUNNING, true)
-            }
+        appPrefs().edit {
+            putBoolean(APP_PREF_SERVICE_RUNNING, true)
+        }
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
@@ -129,17 +127,9 @@ class LocationService : Service() {
         }
 
         Log.i("LocationService", "Starting location updates")
-        val sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE)
         val stalkFrequency =
-            sharedPreferences.getString(APP_PREF_STALK_FREQ, "10s")?.asDuration() ?: return
-        val powerMode =
-            if (stalkFrequency <
-                Duration.ofSeconds(30)
-            ) {
-                Priority.PRIORITY_HIGH_ACCURACY
-            } else {
-                Priority.PRIORITY_BALANCED_POWER_ACCURACY
-            }
+            appPrefs().getString(APP_PREF_STALK_FREQ, "10s")?.asDuration() ?: return
+        val powerMode = powerModeFor(stalkFrequency)
         val locationRequest =
             LocationRequest
                 .Builder(powerMode, stalkFrequency.toMillis())
@@ -153,28 +143,18 @@ class LocationService : Service() {
     }
 
     private fun sendLocationToServer(location: Location) {
-        val sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE)
-        val stalkVictim = sharedPreferences.getString(APP_PREF_USER_NAME, null) ?: return
+        val stalkVictim = appPrefs().getString(APP_PREF_USER_NAME, null) ?: return
         val latitude = location.latitude
         val longitude = location.longitude
 
         serviceScope.launch {
-            try {
-                Log.i("LocationService", "Sending location to server")
-                val ok = ApiClient.postLocation(stalkVictim, latitude, longitude)
-                if (ok) {
-                    Log.i("LocationService", "Sent successfully!")
-                    // Mark that data exists for this user
-                    getSharedPreferences("app_prefs", MODE_PRIVATE)
-                        .edit {
-                            putString(APP_PREF_LAST_CHECKED_NAME, stalkVictim)
-                                .putBoolean(APP_PREF_DATA_EXISTS, true)
-                        }
-                } else {
-                    Log.e("LocationService", "Error: post failed")
+            val ok = reportLocation(stalkVictim, latitude, longitude)
+            if (ok) {
+                // Mark that data exists for this user
+                appPrefs().edit {
+                    putString(APP_PREF_LAST_CHECKED_NAME, stalkVictim)
+                        .putBoolean(APP_PREF_DATA_EXISTS, true)
                 }
-            } catch (e: Exception) {
-                Log.e("LocationService", "Error sending location to server", e)
             }
         }
     }
@@ -191,10 +171,9 @@ class LocationService : Service() {
         stopForeground(STOP_FOREGROUND_REMOVE)
 
         // Mark service as not running
-        getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-            .edit {
-                putBoolean(APP_PREF_SERVICE_RUNNING, false)
-            }
+        appPrefs().edit {
+            putBoolean(APP_PREF_SERVICE_RUNNING, false)
+        }
     }
 
     override fun onStartCommand(
@@ -221,4 +200,30 @@ private fun String.asDuration() =
         "10s" -> Duration.ofSeconds(10)
         "30s" -> Duration.ofSeconds(30)
         else -> Duration.ofSeconds(10)
+    }
+
+internal fun powerModeFor(stalkFrequency: Duration): Int =
+    if (stalkFrequency < Duration.ofSeconds(30)) {
+        Priority.PRIORITY_HIGH_ACCURACY
+    } else {
+        Priority.PRIORITY_BALANCED_POWER_ACCURACY
+    }
+
+internal suspend fun reportLocation(
+    name: String,
+    latitude: Double,
+    longitude: Double,
+): Boolean =
+    try {
+        Log.i("LocationService", "Sending location to server")
+        val ok = ApiClient.postLocation(name, latitude, longitude)
+        if (ok) {
+            Log.i("LocationService", "Sent successfully!")
+        } else {
+            Log.e("LocationService", "Error: post failed")
+        }
+        ok
+    } catch (e: Exception) {
+        Log.e("LocationService", "Error sending location to server", e)
+        false
     }

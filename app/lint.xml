@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!-- mipmap-anydpi-v26 can't be merged into a plain mipmap-anydpi folder despite
+         minSdk 34: AAPT requires the -v26 qualifier to recognize <adaptive-icon>/
+         <monochrome> XML resources, regardless of minSdk. Verified empirically:
+         dropping the qualifier makes AAPT fail with "resource mipmap/ic_launcher
+         not found". -->
+    <issue id="ObsoleteSdkInt">
+        <ignore path="src/main/res/mipmap-anydpi-v26" />
+    </issue>
+</lint>
