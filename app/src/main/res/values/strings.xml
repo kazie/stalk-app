@@ -1,5 +1,10 @@
 <resources>
     <string name="app_name">Stalk App</string>
+    <string name="name_hint">Enter a name</string>
+    <string name="start_stalking">Start stalking</string>
+    <string name="stop_stalking">Stop stalking</string>
+    <string name="delete_my_data">Delete my data</string>
+    <string name="delete_button_icon">🗑️</string>
     <!-- Other strings -->
     <string-array name="time_intervals">
         <item>1s</item>

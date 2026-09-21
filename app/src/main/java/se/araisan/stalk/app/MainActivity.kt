@@ -231,12 +231,10 @@ class MainActivity : AppCompatActivity() {
         ) {
             permissionsToRequest.add(android.Manifest.permission.FOREGROUND_SERVICE_LOCATION)
         }
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) !=
-                PackageManager.PERMISSION_GRANTED
-            ) {
-                permissionsToRequest.add(android.Manifest.permission.POST_NOTIFICATIONS)
-            }
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionsToRequest.add(android.Manifest.permission.POST_NOTIFICATIONS)
         }
 
         return if (permissionsToRequest.isNotEmpty()) {
@@ -289,10 +287,10 @@ class MainActivity : AppCompatActivity() {
     private fun updateUiForServiceState() {
         // Toggle button appearance and text
         if (isServiceRunning) {
-            toggleButton.text = "Stop stalking"
+            toggleButton.text = getString(R.string.stop_stalking)
             toggleButton.backgroundTintList = this.runningStateColor
         } else {
-            toggleButton.text = "Start stalking"
+            toggleButton.text = getString(R.string.start_stalking)
             toggleButton.backgroundTintList = this.idleStateColor
         }
 
