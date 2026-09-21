@@ -1,94 +1,76 @@
 package se.araisan.stalk.app
 
 import android.util.Log
-import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
+import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import retrofit2.Retrofit
+import java.net.HttpURLConnection.HTTP_NOT_FOUND
+import java.util.concurrent.TimeUnit
 
 object ApiClient {
     private const val TAG = "ApiClient"
-    private const val TIMEOUT_MS = 10_000
+    private const val TIMEOUT_SECONDS = 10L
 
-    private fun openConnection(
-        urlString: String,
-        method: String,
-    ): HttpURLConnection =
-        (URL(urlString).openConnection() as HttpURLConnection).apply {
-            requestMethod = method
-            setRequestProperty("Accept", "application/json")
-            setRequestProperty("Authorization", "Bearer ${BuildConfig.API_KEY}")
-            connectTimeout = TIMEOUT_MS
-            readTimeout = TIMEOUT_MS
-        }
+    private val okHttpClient =
+        OkHttpClient
+            .Builder()
+            .addInterceptor { chain ->
+                val request =
+                    chain
+                        .request()
+                        .newBuilder()
+                        .addHeader("Accept", "application/json")
+                        .addHeader("Authorization", "Bearer ${BuildConfig.API_KEY}")
+                        .build()
+                chain.proceed(request)
+            }.connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .build()
 
-    private fun nameUrl(name: String): String {
-        val encoded = URLEncoder.encode(name, StandardCharsets.UTF_8.toString())
-        val base = BuildConfig.SERVER_URL.trimEnd('/')
-        return "$base/$encoded"
-    }
+    private val json = Json { ignoreUnknownKeys = true }
 
-    fun checkUserHasData(name: String): Boolean =
+    internal fun buildApi(baseUrl: String): StalkApi =
+        Retrofit
+            .Builder()
+            .baseUrl(baseUrl.let { if (it.endsWith("/")) it else "$it/" })
+            .client(okHttpClient)
+            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+            .build()
+            .create(StalkApi::class.java)
+
+    internal var api: StalkApi = buildApi(BuildConfig.SERVER_URL)
+
+    suspend fun checkUserHasData(name: String): Boolean =
         try {
-            val connection = openConnection(nameUrl(name), "GET")
-            try {
-                val code = connection.responseCode
-                Log.d(TAG, "GET exists? code=$code")
-                code == HttpURLConnection.HTTP_OK
-            } finally {
-                connection.disconnect()
-            }
+            val response = api.checkUserHasData(name)
+            Log.d(TAG, "GET exists? code=${response.code()}")
+            response.isSuccessful
         } catch (e: Exception) {
             Log.e(TAG, "checkUserHasData error", e)
             false
         }
 
-    fun deleteUserData(name: String): Boolean =
+    suspend fun deleteUserData(name: String): Boolean =
         try {
-            val connection = openConnection(nameUrl(name), "DELETE")
-            try {
-                val code = connection.responseCode
-                Log.d(TAG, "DELETE code=$code")
-                code == HttpURLConnection.HTTP_OK ||
-                    code == HttpURLConnection.HTTP_NO_CONTENT ||
-                    code == HttpURLConnection.HTTP_NOT_FOUND
-            } finally {
-                connection.disconnect()
-            }
+            val response = api.deleteUserData(name)
+            Log.d(TAG, "DELETE code=${response.code()}")
+            response.isSuccessful || response.code() == HTTP_NOT_FOUND
         } catch (e: Exception) {
             Log.e(TAG, "deleteUserData error", e)
             false
         }
 
-    fun postLocation(
+    suspend fun postLocation(
         name: String,
         latitude: Double,
         longitude: Double,
     ): Boolean =
         try {
-            val payload =
-                JSONObject()
-                    .put("name", name)
-                    .put("latitude", latitude)
-                    .put("longitude", longitude)
-                    .toString()
-            // For POST we hit the base endpoint (no /{name}) as per existing implementation
-            val connection = openConnection(BuildConfig.SERVER_URL, "POST")
-            try {
-                connection.setRequestProperty("Content-Type", "application/json")
-                connection.doOutput = true
-                connection.outputStream.use {
-                    it.write(payload.toByteArray())
-                    it.flush()
-                }
-
-                val code = connection.responseCode
-                Log.d(TAG, "POST location code=$code")
-                code == HttpURLConnection.HTTP_OK || code == HttpURLConnection.HTTP_CREATED
-            } finally {
-                connection.disconnect()
-            }
+            val response = api.postLocation(LocationPayload(name, latitude, longitude))
+            Log.d(TAG, "POST location code=${response.code()}")
+            response.isSuccessful
         } catch (e: Exception) {
             Log.e(TAG, "postLocation error", e)
             false

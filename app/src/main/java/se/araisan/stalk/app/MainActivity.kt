@@ -25,7 +25,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 const val APP_PREF_STALK_FREQ = "stalk_frequency"
 const val APP_PREF_USER_NAME = "user_name"
@@ -328,10 +327,7 @@ class MainActivity : AppCompatActivity() {
                     updateDeleteButtonEnabled()
                     return@launch
                 }
-                val exists =
-                    withContext(Dispatchers.IO) {
-                        ApiClient.checkUserHasData(name)
-                    }
+                val exists = ApiClient.checkUserHasData(name)
                 saveDataExistence(name, exists)
                 updateDeleteButtonEnabled()
             }
@@ -358,10 +354,7 @@ class MainActivity : AppCompatActivity() {
         if (nameToDelete.isEmpty() || !deleteButton.isEnabled) return
         deleteButton.isEnabled = false
         lifecycleScope.launch(Dispatchers.Main) {
-            val ok =
-                withContext(Dispatchers.IO) {
-                    ApiClient.deleteUserData(nameToDelete)
-                }
+            val ok = ApiClient.deleteUserData(nameToDelete)
             if (ok) {
                 // On successful delete, mark no data
                 saveDataExistence(nameToDelete, false)

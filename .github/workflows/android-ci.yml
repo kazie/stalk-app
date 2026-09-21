@@ -9,6 +9,10 @@ on:
 env:
   API_KEY: TEST_API_KEY
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   build:
 
@@ -39,11 +43,20 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew assembleDebug
 
-      # Step 6: Run tests
-      - name: Run unit tests
-        run: ./gradlew testDebugUnitTest
+      # Step 6: Run tests and generate a JaCoCo coverage report
+      - name: Run unit tests with coverage
+        run: ./gradlew createDebugUnitTestCoverageReport
 
-    # Step 7: Run instrumented tests (Optional)
+      # Step 7: Report coverage on the PR
+      - name: Add coverage to PR
+        if: github.event_name == 'pull_request'
+        uses: madrapps/jacoco-report@v1.8.0
+        with:
+          paths: ${{ github.workspace }}/app/build/reports/coverage/test/debug/report.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          title: Unit test coverage report
+
+    # Step 8: Run instrumented tests (Optional)
     # Uncomment if you have connectedDebugAndroidTest tests
     # - name: Run instrumented tests
     #   run: ./gradlew connectedDebugAndroidTest
