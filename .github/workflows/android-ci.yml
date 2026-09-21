@@ -43,16 +43,20 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew assembleDebug
 
-      # Step 6: Run tests and generate a JaCoCo coverage report
+      # Step 6: Run tests and generate a coverage report via the Kover plugin
+      # (Kover's Android integration resolves the compiled classes itself,
+      # instead of us hardcoding AGP's internal output directories; excludes
+      # for generated boilerplate live in app/build.gradle.kts under `kover {}`)
       - name: Run unit tests with coverage
-        run: ./gradlew createDebugUnitTestCoverageReport
+        run: ./gradlew koverXmlReportDebug
 
-      # Step 7: Report coverage on the PR
+      # Step 7: Report coverage on the PR (Kover's XML report follows the
+      # same schema as JaCoCo's, so the JaCoCo report action reads it as-is)
       - name: Add coverage to PR
         if: github.event_name == 'pull_request'
         uses: madrapps/jacoco-report@v1.8.0
         with:
-          paths: ${{ github.workspace }}/app/build/reports/coverage/test/debug/report.xml
+          paths: ${{ github.workspace }}/app/build/reports/kover/reportDebug.xml
           token: ${{ secrets.GITHUB_TOKEN }}
           title: Unit test coverage report
 

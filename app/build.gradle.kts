@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.serialization)
     id("com.diffplug.spotless") version "8.10.2"
+    alias(libs.plugins.kover)
 }
 
 android {
@@ -51,9 +52,6 @@ android {
     }
 
     buildTypes {
-        debug {
-            enableUnitTestCoverage = true
-        }
         release {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("release")
@@ -71,6 +69,7 @@ android {
     testOptions {
         unitTests {
             isReturnDefaultValues = true
+            isIncludeAndroidResources = true
             all {
                 it.useJUnitPlatform()
             }
@@ -94,6 +93,9 @@ dependencies {
     testImplementation(libs.mockwebserver3)
     testImplementation(libs.kotest.runner.junit5)
     testImplementation(libs.kotest.assertions.core)
+    testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testRuntimeOnly(libs.junit.vintage.engine)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.mockwebserver3)
@@ -123,5 +125,20 @@ kotlin {
 }
 
 tasks.named("check") {
-    dependsOn("spotlessCheck")
+    dependsOn("spotlessCheck", "koverHtmlReportDebug", "koverLogDebug")
+}
+
+kover {
+    reports {
+        filters {
+            excludes {
+                // kotlinx.serialization @Serializable DTO: only compiler-generated
+                // equals/hashCode/toString/copy/component/serializer, no real logic.
+                classes("se.araisan.stalk.app.LocationPayload*")
+                // Android/view-binding generated code: no logic of ours to test.
+                classes("se.araisan.stalk.app.BuildConfig")
+                packages("se.araisan.stalk.app.databinding")
+            }
+        }
+    }
 }
