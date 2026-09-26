@@ -38,6 +38,7 @@ class DeleteButtonTest {
             .putBoolean(APP_PREF_DATA_EXISTS, true)
             .putBoolean(APP_PREF_SERVICE_RUNNING, false)
             .apply()
+        LocationService.isRunning = false
 
         ActivityScenario.launch(MainActivity::class.java)
 
@@ -57,6 +58,7 @@ class DeleteButtonTest {
             .putBoolean(APP_PREF_DATA_EXISTS, true)
             .putBoolean(APP_PREF_SERVICE_RUNNING, true)
             .apply()
+        LocationService.isRunning = true
 
         ActivityScenario.launch(MainActivity::class.java)
 

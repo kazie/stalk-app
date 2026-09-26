@@ -1,6 +1,7 @@
 package se.araisan.stalk.app
 
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.os.Bundle
@@ -134,9 +135,30 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        // Refresh UI if service state changed while we were paused
+    // Held as a field: SharedPreferences only keeps weak references to listeners.
+    // The service can be started/stopped elsewhere (Android Auto, notification) or fail to start,
+    // so follow its state instead of trusting the optimistic update from the button.
+    private val serviceStateListener =
+        SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == APP_PREF_SERVICE_RUNNING || key == APP_PREF_START_FAILED_AT) {
+                refreshServiceState()
+            }
+        }
+
+    override fun onStart() {
+        super.onStart()
+        clearStaleServiceRunningFlag()
+        appPrefs().registerOnSharedPreferenceChangeListener(serviceStateListener)
+        // Refresh UI if service state changed while we were in the background
+        refreshServiceState()
+    }
+
+    override fun onStop() {
+        appPrefs().unregisterOnSharedPreferenceChangeListener(serviceStateListener)
+        super.onStop()
+    }
+
+    private fun refreshServiceState() {
         val running = getServiceRunning()
         if (running != isServiceRunning) {
             isServiceRunning = running
@@ -198,7 +220,6 @@ class MainActivity : AppCompatActivity() {
                 val intent = Intent(this, LocationService::class.java)
                 startService(intent)
                 isServiceRunning = true
-                saveServiceRunning(true)
                 updateUiForServiceState()
             } else {
                 Log.d("MainActivity", "Permissions not granted")
@@ -208,7 +229,6 @@ class MainActivity : AppCompatActivity() {
             val intent = Intent(this, LocationService::class.java)
             stopService(intent)
             isServiceRunning = false
-            saveServiceRunning(false)
             updateUiForServiceState()
         }
     }
@@ -276,13 +296,9 @@ class MainActivity : AppCompatActivity() {
     // Helper method to retrieve the saved frequency
     private fun getFrequency(): String = appPrefs().getString(APP_PREF_STALK_FREQ, "10s") ?: "10s"
 
-    private fun saveServiceRunning(running: Boolean) {
-        appPrefs().edit {
-            putBoolean(APP_PREF_SERVICE_RUNNING, running)
-        }
-    }
-
-    private fun getServiceRunning(): Boolean = appPrefs().getBoolean(APP_PREF_SERVICE_RUNNING, false)
+    // LocationService owns the running state (and the persisted flag); the in-process
+    // value can't go stale if the process was killed without onDestroy.
+    private fun getServiceRunning(): Boolean = LocationService.isRunning
 
     private fun updateUiForServiceState() {
         // Toggle button appearance and text

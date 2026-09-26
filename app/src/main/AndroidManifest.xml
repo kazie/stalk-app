@@ -35,6 +35,25 @@
             android:name=".LocationService"
             android:exported="false"
             android:foregroundServiceType="location" />
+
+        <!-- Android Auto: templated car UI via the Car App Library.
+             Must be exported for the car host to bind; callers are checked by the HostValidator. -->
+        <service
+            android:name=".car.StalkCarAppService"
+            android:exported="true"
+            tools:ignore="ExportedService">
+            <intent-filter>
+                <action android:name="androidx.car.app.CarAppService" />
+                <category android:name="androidx.car.app.category.IOT" />
+            </intent-filter>
+        </service>
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+        <!-- Car API 7 is needed for template headers (Header); older hosts won't list the app. -->
+        <meta-data
+            android:name="androidx.car.app.minCarApiLevel"
+            android:value="7" />
     </application>
 
 

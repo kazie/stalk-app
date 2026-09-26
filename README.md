@@ -11,6 +11,7 @@ Stalk App is an Android application that tracks your location and sends it to a 
 - **Background Location Tracking:** Uses an Android Foreground Service to maintain location updates.
 - **Configurable Intervals:** Choose how often your location is sent (1s, 5s, 10s, or 30s).
 - **User Identification:** Enter a name to associate with your location data.
+- **Android Auto:** Start/stop tracking and see its status from the car screen.
 - **Data Privacy:** Includes a built-in feature to delete your data from the server.
 - **Modern Android:** Built with Kotlin, Jetpack components, and targets Android 15 (API 35+) and 16 (API 36).
 
@@ -58,6 +59,21 @@ Open the project in Android Studio and run it on your device. Alternatively, use
 ```bash
 ./gradlew installDebug
 ```
+
+## Android Auto
+
+When your phone is connected to Android Auto, Stalk App shows up on the car screen. The screen shows your name, the interval and whether tracking is running, and has a single **Start/Stop stalking** button. You still do the setup on the phone: pick a name and interval, and grant permissions.
+
+The car UI is built with the [Jetpack Car App Library](https://developer.android.com/training/cars/apps) and uses the IoT category. Since the app isn't published on Play for Auto, Android Auto only shows it if **Unknown sources** is enabled:
+
+1. On the phone, open **Settings → Connected devices → Android Auto** (or the Android Auto app). Tap **Version** 10 times to unlock developer settings.
+2. In the ⋮ menu, open **Developer settings** and enable **Unknown sources**.
+3. Connect to the car, or to the [Desktop Head Unit](https://developer.android.com/training/cars/testing/dhu) for testing:
+   ```bash
+   # In Android Auto developer settings: ⋮ → Start head unit server
+   adb forward tcp:5277 tcp:5277
+   $ANDROID_SDK_ROOT/extras/google/auto/desktop-head-unit
+   ```
 
 ## Technical Details
 

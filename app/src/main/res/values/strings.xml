@@ -5,6 +5,14 @@
     <string name="stop_stalking">Stop stalking</string>
     <string name="delete_my_data">Delete my data</string>
     <string name="delete_button_icon">🗑️</string>
+    <!-- Android Auto -->
+    <string name="car_setup_required">Open Stalk App on your phone to set a name and grant location permissions.</string>
+    <string name="car_row_name">Name</string>
+    <string name="car_row_interval">Interval</string>
+    <string name="car_row_status">Status</string>
+    <string name="car_status_running">Stalking</string>
+    <string name="car_status_stopped">Stopped</string>
+    <string name="car_start_on_phone">Could not start from the car. Start stalking on your phone.</string>
     <!-- Other strings -->
     <string-array name="time_intervals">
         <item>1s</item>
