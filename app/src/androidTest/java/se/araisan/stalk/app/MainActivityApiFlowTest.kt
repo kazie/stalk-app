@@ -63,7 +63,7 @@ class MainActivityApiFlowTest {
         onView(withId(R.id.delete_button)).check(matches(isEnabled()))
         val recorded = server.takeRequest()
         assertEquals("GET", recorded.method)
-        assertEquals("/Alice", recorded.url.encodedPath)
+        assertEquals("/api/coords/Alice", recorded.url.encodedPath)
     }
 
     @Test

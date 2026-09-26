@@ -29,7 +29,7 @@ class ApiClientTest :
 
             val recorded = server.takeRequest()
             recorded.method shouldBe "GET"
-            recorded.url.encodedPath shouldBe "/Alice"
+            recorded.url.encodedPath shouldBe "/api/coords/Alice"
             recorded.headers["Authorization"] shouldBe "Bearer ${BuildConfig.API_KEY}"
         }
 
@@ -83,7 +83,8 @@ class ApiClientTest :
 
             val recorded = server.takeRequest()
             recorded.method shouldBe "POST"
-            recorded.url.encodedPath shouldBe "/"
+            // Collection endpoint, no trailing slash (a trailing slash 404s on the server).
+            recorded.url.encodedPath shouldBe "/api/coords"
             val body = recorded.body?.utf8().orEmpty()
             body shouldContain "\"name\":\"Carol\""
             body shouldContain "\"latitude\":12.34"

@@ -29,7 +29,7 @@ android {
             "String",
             "SERVER_URL",
             // Need to make it have it escaped for code, so making "$result"
-            "\"${System.getenv("SERVER_URL") ?: "http://localhost:8080/api/coords"}\"",
+            "\"${System.getenv("SERVER_URL") ?: "http://localhost:8080"}\"",
         )
         buildConfigField(
             "String",
