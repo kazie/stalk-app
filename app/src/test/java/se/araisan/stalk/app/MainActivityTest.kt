@@ -33,6 +33,7 @@ class MainActivityTest {
             .edit()
             .clear()
             .apply()
+        LocationService.isRunning = false
         ShadowToast.reset()
     }
 
@@ -147,17 +148,12 @@ class MainActivityTest {
         val startedService = shadowOf(activity).peekNextStartedService()
         startedService.shouldNotBeNull()
         startedService.component?.className shouldBe LocationService::class.java.name
-        app.appPrefs().getBoolean(APP_PREF_SERVICE_RUNNING, false) shouldBe true
         activity.findViewById<Button>(R.id.start_button).text shouldBe "Stop stalking"
     }
 
     @Test
     fun `clicking stop while running stops the service`() {
-        app
-            .appPrefs()
-            .edit()
-            .putBoolean(APP_PREF_SERVICE_RUNNING, true)
-            .apply()
+        LocationService.isRunning = true
         val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
 
         activity.findViewById<Button>(R.id.start_button).performClick()
@@ -165,8 +161,66 @@ class MainActivityTest {
         val stoppedService = shadowOf(activity).nextStoppedService
         stoppedService.shouldNotBeNull()
         stoppedService.component?.className shouldBe LocationService::class.java.name
-        app.appPrefs().getBoolean(APP_PREF_SERVICE_RUNNING, true) shouldBe false
         activity.findViewById<Button>(R.id.start_button).text shouldBe "Start stalking"
+    }
+
+    @Test
+    fun `button follows the service when it is started elsewhere`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+
+        // e.g. started from Android Auto while the phone screen is open
+        LocationService.isRunning = true
+        app
+            .appPrefs()
+            .edit()
+            .putBoolean(APP_PREF_SERVICE_RUNNING, true)
+            .commit()
+
+        activity.findViewById<Button>(R.id.start_button).text shouldBe "Stop stalking"
+        activity.findViewById<EditText>(R.id.nameEditText).isEnabled shouldBe false
+    }
+
+    @Test
+    fun `button reverts to start when the service refuses to start`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        shadowOf(activity).grantPermissions(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.FOREGROUND_SERVICE_LOCATION,
+            Manifest.permission.POST_NOTIFICATIONS,
+        )
+        activity.findViewById<EditText>(R.id.nameEditText).setText("Alice")
+        activity.findViewById<Button>(R.id.start_button).performClick()
+
+        app
+            .appPrefs()
+            .edit()
+            .putLong(APP_PREF_START_FAILED_AT, 1234L)
+            .commit()
+
+        activity.findViewById<Button>(R.id.start_button).text shouldBe "Start stalking"
+    }
+
+    @Test
+    fun `stale running flag is cleared so a restarted service still updates the button`() {
+        // Process died without onDestroy: the flag was left at true.
+        app
+            .appPrefs()
+            .edit()
+            .putBoolean(APP_PREF_SERVICE_RUNNING, true)
+            .commit()
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        app.appPrefs().getBoolean(APP_PREF_SERVICE_RUNNING, true) shouldBe false
+
+        // The system restarts the service while the screen is open.
+        LocationService.isRunning = true
+        app
+            .appPrefs()
+            .edit()
+            .putBoolean(APP_PREF_SERVICE_RUNNING, true)
+            .commit()
+
+        activity.findViewById<Button>(R.id.start_button).text shouldBe "Stop stalking"
     }
 
     @Test

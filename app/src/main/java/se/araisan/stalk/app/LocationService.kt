@@ -11,6 +11,7 @@ import android.location.Location
 import android.os.IBinder
 import android.util.Log
 import androidx.annotation.RequiresPermission
+import androidx.annotation.VisibleForTesting
 import androidx.core.app.NotificationCompat
 import androidx.core.content.edit
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -25,9 +26,20 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import java.time.Duration
 
+/** Timestamp of the last refused start; a changing value so prefs listeners always fire. */
+const val APP_PREF_START_FAILED_AT = "start_failed_at"
+
 class LocationService : Service() {
     companion object {
         const val ACTION_STOP = "se.araisan.stalk.app.action.STOP"
+
+        /**
+         * In-process truth for whether the service is alive. Unlike the persisted
+         * APP_PREF_SERVICE_RUNNING flag, this resets to false if the process is killed.
+         */
+        @Volatile
+        var isRunning = false
+            @VisibleForTesting internal set
         private const val NOTIFICATION_CHANNEL_ID = "LocationServiceChannel"
         private const val NOTIFICATION_ID = 1
     }
@@ -39,11 +51,6 @@ class LocationService : Service() {
     @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
     override fun onCreate() {
         super.onCreate()
-
-        // Mark service as running
-        appPrefs().edit {
-            putBoolean(APP_PREF_SERVICE_RUNNING, true)
-        }
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
@@ -59,11 +66,22 @@ class LocationService : Service() {
                 }
             }
 
-        startForegroundService()
+        if (!startForegroundService()) {
+            stopSelf()
+            return
+        }
+
+        // Mark service as running; set the in-process flag first so prefs listeners see it.
+        isRunning = true
+        appPrefs().edit {
+            putBoolean(APP_PREF_SERVICE_RUNNING, true)
+        }
+
         startLocationUpdates()
     }
 
-    private fun startForegroundService() {
+    /** Returns false if the system refused to promote us to a foreground service. */
+    private fun startForegroundService(): Boolean {
         Log.i("LocationService", "Starting foreground service")
         val channelId = NOTIFICATION_CHANNEL_ID
         val notificationManager = getSystemService(NotificationManager::class.java)
@@ -112,8 +130,17 @@ class LocationService : Service() {
                 .setOngoing(true)
                 .build()
         Log.i("LocationService", "Created notification")
-        startForeground(NOTIFICATION_ID, notification)
+        try {
+            startForeground(NOTIFICATION_ID, notification)
+        } catch (e: RuntimeException) {
+            // Android 14+ may refuse a location FGS started while the app is in the background
+            // (ForegroundServiceStartNotAllowedException / SecurityException).
+            Log.e("LocationService", "Not allowed to start foreground service", e)
+            appPrefs().edit { putLong(APP_PREF_START_FAILED_AT, System.currentTimeMillis()) }
+            return false
+        }
         Log.i("LocationService", "Started foreground service")
+        return true
     }
 
     @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
@@ -171,6 +198,7 @@ class LocationService : Service() {
         stopForeground(STOP_FOREGROUND_REMOVE)
 
         // Mark service as not running
+        isRunning = false
         appPrefs().edit {
             putBoolean(APP_PREF_SERVICE_RUNNING, false)
         }

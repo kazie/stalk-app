@@ -40,6 +40,7 @@ class LocationServiceTest {
         Robolectric.buildService(LocationService::class.java).create()
 
         app.appPrefs().getBoolean(APP_PREF_SERVICE_RUNNING, false) shouldBe true
+        LocationService.isRunning shouldBe true
     }
 
     @Test
@@ -71,6 +72,7 @@ class LocationServiceTest {
         controller.destroy()
 
         app.appPrefs().getBoolean(APP_PREF_SERVICE_RUNNING, true) shouldBe false
+        LocationService.isRunning shouldBe false
         shadowOf(controller.get()).isForegroundStopped shouldBe true
     }
 
