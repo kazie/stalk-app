@@ -13,6 +13,10 @@ data class LocationPayload(
     val name: String,
     val latitude: Double,
     val longitude: Double,
+    /** Speed over ground in m/s; omitted from the JSON when unknown. */
+    val speed: Double? = null,
+    /** Direction of travel in degrees clockwise from true north; omitted from the JSON when unknown. */
+    val heading: Double? = null,
 )
 
 // The base URL is the server origin; the resource paths live here. POST targets the

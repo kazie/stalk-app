@@ -35,6 +35,20 @@ class ReportLocationTest :
             body shouldContain "\"longitude\":56.78"
         }
 
+        test("passes speed and heading through to the request body") {
+            server.enqueue(MockResponse(code = 200))
+
+            reportLocation("Alice", 12.34, 56.78, speed = 8.3, heading = 45.0) shouldBe true
+
+            val body =
+                server
+                    .takeRequest()
+                    .body
+                    ?.utf8()
+                    .orEmpty()
+            body shouldBe """{"name":"Alice","latitude":12.34,"longitude":56.78,"speed":8.3,"heading":45.0}"""
+        }
+
         test("returns false on a server error") {
             server.enqueue(MockResponse(code = 500))
 

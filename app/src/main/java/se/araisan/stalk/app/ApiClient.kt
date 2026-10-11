@@ -29,7 +29,12 @@ object ApiClient {
             .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .build()
 
-    private val json = Json { ignoreUnknownKeys = true }
+    // Relied upon (also the library default): unknown speed/heading are omitted, not sent as null.
+    private val json =
+        Json {
+            ignoreUnknownKeys = true
+            encodeDefaults = false
+        }
 
     internal fun buildApi(baseUrl: String): StalkApi =
         Retrofit
@@ -66,9 +71,11 @@ object ApiClient {
         name: String,
         latitude: Double,
         longitude: Double,
+        speed: Double? = null,
+        heading: Double? = null,
     ): Boolean =
         try {
-            val response = api.postLocation(LocationPayload(name, latitude, longitude))
+            val response = api.postLocation(LocationPayload(name, latitude, longitude, speed, heading))
             Log.d(TAG, "POST location code=${response.code()}")
             response.isSuccessful
         } catch (e: Exception) {

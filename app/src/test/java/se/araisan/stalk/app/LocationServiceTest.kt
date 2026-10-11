@@ -93,6 +93,36 @@ class LocationServiceTest {
 
     @Test
     fun `a delivered location is posted to the API and marks data as existing`() {
+        val location =
+            Location("fused").apply {
+                latitude = 12.34
+                longitude = 56.78
+            }
+
+        deliverAndCaptureBody(location) shouldBe """{"name":"Alice","latitude":12.34,"longitude":56.78}"""
+
+        app.appPrefs().getBoolean(APP_PREF_DATA_EXISTS, false) shouldBe true
+        app.appPrefs().getString(APP_PREF_LAST_CHECKED_NAME, null) shouldBe "Alice"
+    }
+
+    @Test
+    fun `a delivered location with speed and bearing includes them in the body`() {
+        // Location.speed/bearing are Floats; use values exactly representable as Float
+        // so the Double in the JSON body is predictable.
+        val location =
+            Location("fused").apply {
+                latitude = 12.34
+                longitude = 56.78
+                speed = 8.5f
+                bearing = 45f
+            }
+
+        deliverAndCaptureBody(location) shouldBe
+            """{"name":"Alice","latitude":12.34,"longitude":56.78,"speed":8.5,"heading":45.0}"""
+    }
+
+    /** Feeds [location] to the service's location callback as user "Alice" and returns the POSTed body. */
+    private fun deliverAndCaptureBody(location: Location): String {
         val server = MockWebServer()
         server.start()
         val productionApi = ApiClient.api
@@ -112,11 +142,6 @@ class LocationServiceTest {
                 LocationService::class.java.getDeclaredField("locationCallback").apply { isAccessible = true }
             val callback = callbackField.get(service) as LocationCallback
 
-            val location =
-                Location("fused").apply {
-                    latitude = 12.34
-                    longitude = 56.78
-                }
             callback.onLocationResult(LocationResult.create(listOf(location)))
 
             // sendLocationToServer() launches on Dispatchers.IO; give it a moment to finish.
@@ -124,11 +149,7 @@ class LocationServiceTest {
 
             val recorded = server.takeRequest()
             recorded.method shouldBe "POST"
-            val body = recorded.body?.utf8().orEmpty()
-            body shouldBe """{"name":"Alice","latitude":12.34,"longitude":56.78}"""
-
-            app.appPrefs().getBoolean(APP_PREF_DATA_EXISTS, false) shouldBe true
-            app.appPrefs().getString(APP_PREF_LAST_CHECKED_NAME, null) shouldBe "Alice"
+            return recorded.body?.utf8().orEmpty()
         } finally {
             ApiClient.api = productionApi
             runCatching { server.close() }

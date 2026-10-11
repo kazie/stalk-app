@@ -173,9 +173,11 @@ class LocationService : Service() {
         val stalkVictim = appPrefs().getString(APP_PREF_USER_NAME, null) ?: return
         val latitude = location.latitude
         val longitude = location.longitude
+        val speed = if (location.hasSpeed()) location.speed.toDouble() else null
+        val heading = if (location.hasBearing()) location.bearing.toDouble() else null
 
         serviceScope.launch {
-            val ok = reportLocation(stalkVictim, latitude, longitude)
+            val ok = reportLocation(stalkVictim, latitude, longitude, speed, heading)
             if (ok) {
                 // Mark that data exists for this user
                 appPrefs().edit {
@@ -241,10 +243,12 @@ internal suspend fun reportLocation(
     name: String,
     latitude: Double,
     longitude: Double,
+    speed: Double? = null,
+    heading: Double? = null,
 ): Boolean =
     try {
         Log.i("LocationService", "Sending location to server")
-        val ok = ApiClient.postLocation(name, latitude, longitude)
+        val ok = ApiClient.postLocation(name, latitude, longitude, speed, heading)
         if (ok) {
             Log.i("LocationService", "Sent successfully!")
         } else {

@@ -84,7 +84,8 @@ The app uses `LocationService`, which runs as a [Foreground Service](https://dev
 The app communicates with the backend using the following endpoints (relative to `SERVER_URL`):
 
 - **POST** `/`: Sends the current location.
-  - Payload: `{ "name": "...", "latitude": ..., "longitude": ... }`
+  - Payload: `{ "name": "...", "latitude": ..., "longitude": ..., "speed": ..., "heading": ... }`
+  - `speed` (m/s, from `Location.speed`) and `heading` (degrees clockwise from true north, from `Location.bearing`) are optional: they are only sent when the location fix has them (`hasSpeed()` / `hasBearing()`), otherwise the keys are omitted entirely.
 - **GET** `/{name}`: Checks if data exists for a specific user name.
 - **DELETE** `/{name}`: Deletes all data associated with the user name.
 
