@@ -91,6 +91,35 @@ class ApiClientTest :
             body shouldContain "\"longitude\":56.78"
         }
 
+        test("postLocation includes speed and heading when given") {
+            server.enqueue(MockResponse(code = 200))
+
+            ApiClient.postLocation("Carol", 12.34, 56.78, speed = 8.3, heading = 45.0) shouldBe true
+
+            val body =
+                server
+                    .takeRequest()
+                    .body
+                    ?.utf8()
+                    .orEmpty()
+            body shouldContain "\"speed\":8.3"
+            body shouldContain "\"heading\":45.0"
+        }
+
+        test("postLocation omits speed and heading keys entirely when null") {
+            server.enqueue(MockResponse(code = 200))
+
+            ApiClient.postLocation("Carol", 12.34, 56.78, speed = null, heading = null) shouldBe true
+
+            val body =
+                server
+                    .takeRequest()
+                    .body
+                    ?.utf8()
+                    .orEmpty()
+            body shouldBe """{"name":"Carol","latitude":12.34,"longitude":56.78}"""
+        }
+
         test("postLocation returns true on 201") {
             server.enqueue(MockResponse(code = 201))
 
