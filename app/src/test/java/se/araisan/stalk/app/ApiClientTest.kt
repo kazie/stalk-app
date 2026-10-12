@@ -88,6 +88,13 @@ class ApiClientTest :
             ApiClient.deleteUserData("Bob") shouldBe ApiResult.HttpError(500, null)
         }
 
+        test("deleteUserData returns NetworkError when the server is unreachable") {
+            server.close()
+
+            val result = ApiClient.deleteUserData("Bob")
+            result.shouldBeInstanceOf<ApiResult.NetworkError>()
+        }
+
         test("postLocation sends the JSON payload and returns Success on 200") {
             server.enqueue(MockResponse(code = 200))
 
@@ -144,6 +151,13 @@ class ApiClientTest :
             ApiClient.postLocation("Carol", 0.0, 0.0) shouldBe ApiResult.HttpError(500, null)
         }
 
+        test("postLocation returns NetworkError when the server is unreachable") {
+            server.close()
+
+            val result = ApiClient.postLocation("Carol", 0.0, 0.0)
+            result.shouldBeInstanceOf<ApiResult.NetworkError>()
+        }
+
         test("sends an Accept header that includes problem+json") {
             server.enqueue(MockResponse(code = 200))
 
@@ -166,11 +180,43 @@ class ApiClientTest :
 
             result.shouldBeInstanceOf<ApiResult.HttpError>()
             result.code shouldBe 400
-            result.problem?.errors shouldBe
-                listOf(
-                    FieldError("#/latitude", "must be between -90 and 90"),
-                    FieldError("#/heading", "must be between 0 and 360"),
+            result.problem shouldBe
+                ProblemDetails(
+                    type = "about:blank",
+                    title = "Bad Request",
+                    status = 400,
+                    detail = "2 fields are invalid",
+                    instance = "/api/coords",
+                    errors =
+                        listOf(
+                            FieldError("#/latitude", "must be between -90 and 90"),
+                            FieldError("#/heading", "must be between 0 and 360"),
+                        ),
                 )
+        }
+
+        test("a minimal problem body falls back to defaults") {
+            server.enqueue(problemResponse(500, """{"status":500}"""))
+
+            val result = ApiClient.postLocation("Carol", 0.0, 0.0)
+
+            result.shouldBeInstanceOf<ApiResult.HttpError>()
+            result.problem shouldBe ProblemDetails(status = 500)
+            result.problem?.type shouldBe "about:blank"
+        }
+
+        test("unknown problem fields are ignored, not a parse failure") {
+            server.enqueue(
+                problemResponse(
+                    500,
+                    """{"status":500,"detail":"Boom","timestamp":"2026-10-12T00:00:00Z","traceId":"abc"}""",
+                ),
+            )
+
+            val result = ApiClient.postLocation("Carol", 0.0, 0.0)
+
+            result.shouldBeInstanceOf<ApiResult.HttpError>()
+            result.problem?.detail shouldBe "Boom"
         }
 
         test("a 401 with an invalid token gives HttpError with the problem detail") {

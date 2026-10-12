@@ -36,6 +36,28 @@ class ApiResultTest {
     }
 
     @Test
+    fun `401 without a problem body gives the Invalid API key message`() {
+        ApiResult.HttpError(401, null).userMessage(app) shouldBe "Invalid API key"
+    }
+
+    @Test
+    fun `401 without a detail gives the Invalid API key message`() {
+        ApiResult.HttpError(401, ProblemDetails(status = 401)).userMessage(app) shouldBe "Invalid API key"
+    }
+
+    @Test
+    fun `400 without field errors shows the server detail`() {
+        ApiResult.HttpError(400, ProblemDetails(status = 400, detail = "Malformed JSON")).userMessage(app) shouldBe
+            "Malformed JSON"
+    }
+
+    @Test
+    fun `400 with an empty errors list and no detail falls back to the status code`() {
+        ApiResult.HttpError(400, ProblemDetails(status = 400, errors = emptyList())).userMessage(app) shouldBe
+            "Request failed (400)"
+    }
+
+    @Test
     fun `400 with field errors lists each invalid field`() {
         val result =
             ApiResult.HttpError(
