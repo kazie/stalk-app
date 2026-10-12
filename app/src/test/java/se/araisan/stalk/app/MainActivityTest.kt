@@ -247,6 +247,37 @@ class MainActivityTest {
     }
 
     @Test
+    fun `existence check keeps the last known value when the server errors`() {
+        val server = MockWebServer()
+        server.start()
+        val productionApi = ApiClient.api
+        ApiClient.api = ApiClient.buildApi(server.url("/").toString())
+
+        try {
+            app
+                .appPrefs()
+                .edit()
+                .putString(APP_PREF_LAST_CHECKED_NAME, "Alice")
+                .putBoolean(APP_PREF_DATA_EXISTS, true)
+                .apply()
+            server.enqueue(MockResponse(code = 500))
+            val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+
+            activity.findViewById<EditText>(R.id.nameEditText).setText("Alice")
+
+            idleUntil { server.requestCount > 0 }
+            // Give the failed response time to come back and be handled.
+            runCatching { idleUntil(timeoutMs = 300) { false } }
+
+            app.appPrefs().getBoolean(APP_PREF_DATA_EXISTS, false) shouldBe true
+            activity.findViewById<Button>(R.id.delete_button).isEnabled shouldBe true
+        } finally {
+            ApiClient.api = productionApi
+            runCatching { server.close() }
+        }
+    }
+
+    @Test
     fun `clicking delete calls the API and disables the button on success`() {
         val server = MockWebServer()
         server.start()
@@ -298,7 +329,7 @@ class MainActivityTest {
 
             idleUntil { ShadowToast.getTextOfLatestToast() != null }
 
-            ShadowToast.getTextOfLatestToast() shouldBe "Delete failed"
+            ShadowToast.getTextOfLatestToast() shouldBe "Delete failed: Request failed (500)"
             app.appPrefs().getBoolean(APP_PREF_DATA_EXISTS, false) shouldBe true
             activity.findViewById<Button>(R.id.delete_button).isEnabled shouldBe true
         } finally {

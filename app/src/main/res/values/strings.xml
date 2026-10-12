@@ -13,6 +13,21 @@
     <string name="car_status_running">Stalking</string>
     <string name="car_status_stopped">Stopped</string>
     <string name="car_start_on_phone">Could not start from the car. Start stalking on your phone.</string>
+    <!-- Foreground service notification -->
+    <string name="notification_channel_name">Location Service</string>
+    <string name="notification_title">Location Service</string>
+    <string name="notification_text">Collecting your location in foreground. Tap to manage or stop.</string>
+    <string name="notification_action_stop">Stop</string>
+    <!-- Delete data -->
+    <string name="delete_success">Deleted data</string>
+    <string name="delete_failed">Delete failed: %1$s</string>
+    <!-- API errors -->
+    <string name="api_ok">OK</string>
+    <string name="api_network_error">Network error</string>
+    <string name="api_key_missing">API key missing</string>
+    <string name="api_key_invalid">Invalid API key</string>
+    <string name="api_invalid_location">Invalid location: %1$s</string>
+    <string name="api_request_failed">Request failed (%1$d)</string>
     <!-- Other strings -->
     <string-array name="time_intervals">
         <item>1s</item>

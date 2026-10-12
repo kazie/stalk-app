@@ -90,7 +90,7 @@ class LocationService : Service() {
         val channel =
             NotificationChannel(
                 channelId,
-                "Location Service",
+                getString(R.string.notification_channel_name),
                 NotificationManager.IMPORTANCE_DEFAULT,
             )
         notificationManager?.createNotificationChannel(channel)
@@ -122,11 +122,11 @@ class LocationService : Service() {
         val notification: Notification =
             NotificationCompat
                 .Builder(this, channelId)
-                .setContentTitle("Location Service")
-                .setContentText("Collecting your location in foreground. Tap to manage or stop.")
+                .setContentTitle(getString(R.string.notification_title))
+                .setContentText(getString(R.string.notification_text))
                 .setSmallIcon(android.R.drawable.ic_menu_mylocation)
                 .setContentIntent(contentPendingIntent)
-                .addAction(android.R.drawable.ic_media_pause, "Stop", stopPendingIntent)
+                .addAction(android.R.drawable.ic_media_pause, getString(R.string.notification_action_stop), stopPendingIntent)
                 .setOngoing(true)
                 .build()
         Log.i("LocationService", "Created notification")
@@ -248,13 +248,13 @@ internal suspend fun reportLocation(
 ): Boolean =
     try {
         Log.i("LocationService", "Sending location to server")
-        val ok = ApiClient.postLocation(name, latitude, longitude, speed, heading)
-        if (ok) {
+        val result = ApiClient.postLocation(name, latitude, longitude, speed, heading)
+        if (result is ApiResult.Success) {
             Log.i("LocationService", "Sent successfully!")
         } else {
-            Log.e("LocationService", "Error: post failed")
+            Log.e("LocationService", "Error: post failed: $result")
         }
-        ok
+        result is ApiResult.Success
     } catch (e: Exception) {
         Log.e("LocationService", "Error sending location to server", e)
         false

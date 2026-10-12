@@ -1,0 +1,15 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>MagicNumber:LocationService.kt:10</ID>
+    <ID>MagicNumber:LocationService.kt:30</ID>
+    <ID>MagicNumber:LocationService.kt:5</ID>
+    <ID>SwallowedException:LocationService.kt:LocationService$t: Throwable</ID>
+    <ID>TooGenericExceptionCaught:ApiClient.kt:ApiClient$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:LocationService.kt:LocationService$e: RuntimeException</ID>
+    <ID>TooGenericExceptionCaught:LocationService.kt:LocationService$t: Throwable</ID>
+    <ID>TooGenericExceptionCaught:LocationService.kt:e: Exception</ID>
+    <ID>TooManyFunctions:MainActivity.kt:MainActivity : AppCompatActivity</ID>
+  </CurrentIssues>
+</SmellBaseline>

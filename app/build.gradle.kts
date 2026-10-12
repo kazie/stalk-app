@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     id("com.diffplug.spotless") version "8.10.3"
     alias(libs.plugins.kover)
+    alias(libs.plugins.detekt)
 }
 
 android {
@@ -75,6 +76,12 @@ android {
             }
         }
     }
+
+    lint {
+        // Any lint warning fails the build; suppress deliberately in lint.xml.
+        warningsAsErrors = true
+        abortOnError = true
+    }
 }
 
 dependencies {
@@ -126,8 +133,14 @@ kotlin {
     }
 }
 
+detekt {
+    buildUponDefaultConfig = true
+    config.setFrom(rootProject.file("config/detekt/detekt.yml"))
+    baseline = file("detekt-baseline.xml")
+}
+
 tasks.named("check") {
-    dependsOn("spotlessCheck", "koverHtmlReportDebug", "koverLogDebug")
+    dependsOn("spotlessCheck", "lintDebug", "koverHtmlReportDebug", "koverLogDebug")
 }
 
 kover {
