@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     id("com.diffplug.spotless") version "8.10.3"
     alias(libs.plugins.kover)
+    alias(libs.plugins.detekt)
 }
 
 android {
@@ -75,6 +76,12 @@ android {
             }
         }
     }
+
+    lint {
+        // Any lint warning fails the build; suppress deliberately in lint.xml.
+        warningsAsErrors = true
+        abortOnError = true
+    }
 }
 
 dependencies {
@@ -126,17 +133,28 @@ kotlin {
     }
 }
 
+detekt {
+    buildUponDefaultConfig = true
+    config.setFrom(rootProject.file("config/detekt/detekt.yml"))
+    baseline = file("detekt-baseline.xml")
+}
+
 tasks.named("check") {
-    dependsOn("spotlessCheck", "koverHtmlReportDebug", "koverLogDebug")
+    dependsOn("spotlessCheck", "lintDebug", "koverHtmlReportDebug", "koverLogDebug")
 }
 
 kover {
     reports {
         filters {
             excludes {
-                // kotlinx.serialization @Serializable DTO: only compiler-generated
+                // kotlinx.serialization @Serializable DTOs: only compiler-generated
                 // equals/hashCode/toString/copy/component/serializer, no real logic.
-                classes("se.araisan.stalk.app.LocationPayload*")
+                // Their decoding is tested through ApiClientTest.
+                classes(
+                    "se.araisan.stalk.app.LocationPayload*",
+                    "se.araisan.stalk.app.ProblemDetails*",
+                    "se.araisan.stalk.app.FieldError*",
+                )
                 // Android/view-binding generated code: no logic of ours to test.
                 classes("se.araisan.stalk.app.BuildConfig")
                 packages("se.araisan.stalk.app.databinding")

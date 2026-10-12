@@ -33,6 +33,8 @@ const val APP_PREF_SERVICE_RUNNING = "service_running"
 const val APP_PREF_DATA_EXISTS = "data_exists"
 const val APP_PREF_LAST_CHECKED_NAME = "last_checked_name"
 
+private const val EXISTENCE_CHECK_DEBOUNCE_MS = 500L
+
 class MainActivity : AppCompatActivity() {
     private var isServiceRunning = false // service state.
 
@@ -127,7 +129,7 @@ class MainActivity : AppCompatActivity() {
         nameEditText.addTextChangedListener(createTextWatcher())
 
         toggleButton.setOnClickListener {
-            buttonClickListener(toggleButton)
+            buttonClickListener()
         }
 
         deleteButton.setOnClickListener {
@@ -213,7 +215,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-    private fun buttonClickListener(button: Button) {
+    private fun buttonClickListener() {
         if (!isServiceRunning) {
             Log.d("MainActivity", "Start button clicked") // Verify this log appears
             if (checkAndRequestPermissions()) {
@@ -335,14 +337,18 @@ class MainActivity : AppCompatActivity() {
         existenceJob?.cancel()
         existenceJob =
             lifecycleScope.launch(Dispatchers.Main) {
-                delay(500)
+                delay(EXISTENCE_CHECK_DEBOUNCE_MS)
                 val name = nameEditText.text?.toString() ?: ""
                 if (name.isEmpty() || isServiceRunning) {
                     updateDeleteButtonEnabled()
                     return@launch
                 }
-                val exists = ApiClient.checkUserHasData(name)
-                saveDataExistence(name, exists)
+                when (val result = ApiClient.checkUserHasData(name)) {
+                    is ApiResult.Success -> saveDataExistence(name, result.value)
+
+                    // Don't read an error as "no data"; keep the last known value.
+                    else -> Log.w("MainActivity", "Existence check failed: ${result.userMessage(this@MainActivity)}")
+                }
                 updateDeleteButtonEnabled()
             }
     }
@@ -368,15 +374,18 @@ class MainActivity : AppCompatActivity() {
         if (nameToDelete.isEmpty() || !deleteButton.isEnabled) return
         deleteButton.isEnabled = false
         lifecycleScope.launch(Dispatchers.Main) {
-            val ok = ApiClient.deleteUserData(nameToDelete)
-            if (ok) {
+            val result = ApiClient.deleteUserData(nameToDelete)
+            if (result is ApiResult.Success) {
                 // On successful delete, mark no data
                 saveDataExistence(nameToDelete, false)
-            }
-            if (ok) {
-                Toast.makeText(this@MainActivity, "Deleted data", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MainActivity, R.string.delete_success, Toast.LENGTH_SHORT).show()
             } else {
-                Toast.makeText(this@MainActivity, "Delete failed", Toast.LENGTH_SHORT).show()
+                Toast
+                    .makeText(
+                        this@MainActivity,
+                        getString(R.string.delete_failed, result.userMessage(this@MainActivity)),
+                        Toast.LENGTH_SHORT,
+                    ).show()
             }
             updateDeleteButtonEnabled()
         }

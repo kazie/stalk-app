@@ -1,0 +1,12 @@
+# Overrides on top of detekt's default config (buildUponDefaultConfig = true).
+# Formatting is left to spotless + ktlint, so the formatting ruleset is not enabled.
+
+style:
+  # ktlint (via spotless) owns line length; two tools fighting over it helps no one.
+  MaxLineLength:
+    active: false
+
+empty-blocks:
+  # No-op overrides of listener interfaces (e.g. TextWatcher) are expected.
+  EmptyFunctionBlock:
+    ignoreOverridden: true
