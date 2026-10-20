@@ -165,19 +165,32 @@ class LocationServiceTest {
 
     @Test
     fun `a delivered location with speed and bearing includes them in the body`() {
-        // Location.speed/bearing are Floats; use values exactly representable as Float
-        // so the Double in the JSON body is predictable.
-        val location =
-            Location("fused").apply {
-                latitude = 12.34
-                longitude = 56.78
-                speed = 8.5f
-                bearing = 45f
-            }
-
-        deliverAndCaptureBody(location) shouldBe
+        // Setting left unset: sending speed and heading is on by default.
+        deliverAndCaptureBody(movingLocation()) shouldBe
             """{"name":"Alice","latitude":12.34,"longitude":56.78,"speed":8.5,"heading":45.0}"""
     }
+
+    @Test
+    fun `speed and bearing are left out when sending speed is turned off`() {
+        deliverAndCaptureBody(movingLocation(), sendSpeed = false) shouldBe
+            """{"name":"Alice","latitude":12.34,"longitude":56.78}"""
+    }
+
+    @Test
+    fun `speed and bearing are sent when sending speed is turned on`() {
+        deliverAndCaptureBody(movingLocation(), sendSpeed = true) shouldBe
+            """{"name":"Alice","latitude":12.34,"longitude":56.78,"speed":8.5,"heading":45.0}"""
+    }
+
+    // Location.speed/bearing are Floats; use values exactly representable as Float
+    // so the Double in the JSON body is predictable.
+    private fun movingLocation() =
+        Location("fused").apply {
+            latitude = 12.34
+            longitude = 56.78
+            speed = 8.5f
+            bearing = 45f
+        }
 
     @Test
     fun `a failed post does not mark data as existing`() {
@@ -206,9 +219,10 @@ class LocationServiceTest {
     private fun deliverAndCaptureBody(
         location: Location,
         response: MockResponse = MockResponse(code = 200),
+        sendSpeed: Boolean? = null,
     ): String {
         var body = ""
-        deliver(LocationResult.create(listOf(location)), response = response) { server ->
+        deliver(LocationResult.create(listOf(location)), response = response, sendSpeed = sendSpeed) { server ->
             val recorded = server.takeRequest()
             recorded.method shouldBe "POST"
             body = recorded.body?.utf8().orEmpty()
@@ -217,13 +231,14 @@ class LocationServiceTest {
     }
 
     /**
-     * Feeds [result] to the service's location callback, with [userName] stored in prefs,
-     * and returns how many requests reached the server.
+     * Feeds [result] to the service's location callback, with [userName] (and [sendSpeed], if set)
+     * stored in prefs, and returns how many requests reached the server.
      */
     private fun deliver(
         result: LocationResult,
         userName: String? = "Alice",
         response: MockResponse = MockResponse(code = 200),
+        sendSpeed: Boolean? = null,
         inspect: (MockWebServer) -> Unit = {},
     ): Int {
         val server = MockWebServer()
@@ -232,11 +247,9 @@ class LocationServiceTest {
         ApiClient.api = ApiClient.buildApi(server.url("/").toString())
 
         try {
-            app
-                .appPrefs()
-                .edit()
-                .putString(APP_PREF_USER_NAME, userName)
-                .apply()
+            val editor = app.appPrefs().edit().putString(APP_PREF_USER_NAME, userName)
+            if (sendSpeed != null) editor.putBoolean(APP_PREF_SEND_SPEED_HEADING, sendSpeed)
+            editor.apply()
             server.enqueue(response)
 
             val controller = Robolectric.buildService(LocationService::class.java).create()

@@ -170,11 +170,13 @@ class LocationService : Service() {
     }
 
     private fun sendLocationToServer(location: Location) {
-        val stalkVictim = appPrefs().getString(APP_PREF_USER_NAME, null) ?: return
+        val prefs = appPrefs()
+        val stalkVictim = prefs.getString(APP_PREF_USER_NAME, null) ?: return
         val latitude = location.latitude
         val longitude = location.longitude
-        val speed = if (location.hasSpeed()) location.speed.toDouble() else null
-        val heading = if (location.hasBearing()) location.bearing.toDouble() else null
+        val sendSpeedHeading = prefs.sendSpeedHeading()
+        val speed = if (sendSpeedHeading && location.hasSpeed()) location.speed.toDouble() else null
+        val heading = if (sendSpeedHeading && location.hasBearing()) location.bearing.toDouble() else null
 
         serviceScope.launch {
             val ok = reportLocation(stalkVictim, latitude, longitude, speed, heading)

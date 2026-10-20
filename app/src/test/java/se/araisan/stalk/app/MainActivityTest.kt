@@ -5,6 +5,7 @@ import android.os.Looper
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Spinner
+import com.google.android.material.materialswitch.MaterialSwitch
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -99,6 +100,56 @@ class MainActivityTest {
         shadowOf(Looper.getMainLooper()).idle()
 
         app.appPrefs().getString(APP_PREF_STALK_FREQ, null) shouldBe "5s"
+    }
+
+    @Test
+    fun `send speed switch is on by default`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+
+        activity.findViewById<MaterialSwitch>(R.id.sendSpeedSwitch).isChecked shouldBe true
+    }
+
+    @Test
+    fun `onCreate restores the send speed setting`() {
+        app
+            .appPrefs()
+            .edit()
+            .putBoolean(APP_PREF_SEND_SPEED_HEADING, false)
+            .apply()
+
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+
+        activity.findViewById<MaterialSwitch>(R.id.sendSpeedSwitch).isChecked shouldBe false
+    }
+
+    @Test
+    fun `toggling the send speed switch persists the setting`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+
+        activity.findViewById<MaterialSwitch>(R.id.sendSpeedSwitch).performClick()
+
+        app.appPrefs().sendSpeedHeading() shouldBe false
+    }
+
+    @Test
+    fun `send speed switch follows the setting when it is changed elsewhere`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+
+        app
+            .appPrefs()
+            .edit()
+            .putBoolean(APP_PREF_SEND_SPEED_HEADING, false)
+            .commit()
+
+        activity.findViewById<MaterialSwitch>(R.id.sendSpeedSwitch).isChecked shouldBe false
+    }
+
+    @Test
+    fun `send speed switch stays enabled while the service is running`() {
+        LocationService.isRunning = true
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+
+        activity.findViewById<MaterialSwitch>(R.id.sendSpeedSwitch).isEnabled shouldBe true
     }
 
     @Test

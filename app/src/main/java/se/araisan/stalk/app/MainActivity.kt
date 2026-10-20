@@ -22,6 +22,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.edit
 import androidx.core.graphics.toColorInt
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.materialswitch.MaterialSwitch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -42,6 +43,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var toggleButton: Button // Reference to the button
     private lateinit var intervalSpinner: Spinner // Reference to the frequency spinner
     private lateinit var deleteButton: Button // Delete my data button
+    private lateinit var sendSpeedSwitch: MaterialSwitch // Send speed and heading toggle
 
     // Toggle button color states: idle/"Start stalking" is green, running/"Stop stalking" is red
     private val idleStateColor =
@@ -109,6 +111,13 @@ class MainActivity : AppCompatActivity() {
         toggleButton = findViewById(R.id.start_button)
         deleteButton = findViewById(R.id.delete_button)
 
+        // Not locked while running: the service reads the pref on every location fix.
+        sendSpeedSwitch = findViewById(R.id.sendSpeedSwitch)
+        syncSendSpeedSwitch()
+        sendSpeedSwitch.setOnCheckedChangeListener { _, isChecked ->
+            appPrefs().edit { putBoolean(APP_PREF_SEND_SPEED_HEADING, isChecked) }
+        }
+
         enableEdgeToEdge()
 
         // Load the saved name from SharedPreferences
@@ -142,8 +151,9 @@ class MainActivity : AppCompatActivity() {
     // so follow its state instead of trusting the optimistic update from the button.
     private val serviceStateListener =
         SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key == APP_PREF_SERVICE_RUNNING || key == APP_PREF_START_FAILED_AT) {
-                refreshServiceState()
+            when (key) {
+                APP_PREF_SERVICE_RUNNING, APP_PREF_START_FAILED_AT -> refreshServiceState()
+                APP_PREF_SEND_SPEED_HEADING -> syncSendSpeedSwitch()
             }
         }
 
@@ -151,8 +161,14 @@ class MainActivity : AppCompatActivity() {
         super.onStart()
         clearStaleServiceRunningFlag()
         appPrefs().registerOnSharedPreferenceChangeListener(serviceStateListener)
-        // Refresh UI if service state changed while we were in the background
+        // Refresh UI if service state or settings changed while we were in the background
         refreshServiceState()
+        syncSendSpeedSwitch()
+    }
+
+    // Writing back an unchanged value from the switch listener doesn't notify prefs listeners, so no loop.
+    private fun syncSendSpeedSwitch() {
+        sendSpeedSwitch.isChecked = appPrefs().sendSpeedHeading()
     }
 
     override fun onStop() {
