@@ -5,6 +5,7 @@
     <string name="stop_stalking">Stop stalking</string>
     <string name="delete_my_data">Delete my data</string>
     <string name="delete_button_icon">🗑️</string>
+    <string name="send_speed">Send speed and heading</string>
     <!-- Android Auto -->
     <string name="car_setup_required">Open Stalk App on your phone to set a name and grant location permissions.</string>
     <string name="car_row_name">Name</string>

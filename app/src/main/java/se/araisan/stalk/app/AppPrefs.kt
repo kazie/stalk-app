@@ -6,7 +6,13 @@ import androidx.core.content.edit
 
 const val APP_PREFS_NAME = "app_prefs"
 
+/** Whether speed and heading are sent with each location. */
+const val APP_PREF_SEND_SPEED_HEADING = "send_speed_heading"
+
 fun Context.appPrefs(): SharedPreferences = getSharedPreferences(APP_PREFS_NAME, Context.MODE_PRIVATE)
+
+/** Speed and heading are sent unless the user turned it off. */
+fun SharedPreferences.sendSpeedHeading(): Boolean = getBoolean(APP_PREF_SEND_SPEED_HEADING, true)
 
 /**
  * Clears APP_PREF_SERVICE_RUNNING if it was left at true by a process killed without

@@ -11,6 +11,7 @@ Stalk App is an Android application that tracks your location and sends it to a 
 - **Background Location Tracking:** Uses an Android Foreground Service to maintain location updates.
 - **Configurable Intervals:** Choose how often your location is sent (1s, 5s, 10s, or 30s).
 - **User Identification:** Enter a name to associate with your location data.
+- **Speed & Heading Toggle:** Choose whether speed and heading are sent with your location. Can be changed while tracking.
 - **Android Auto:** Start/stop tracking and see its status from the car screen.
 - **Data Privacy:** Includes a built-in feature to delete your data from the server.
 - **Modern Android:** Built with Kotlin, Jetpack components, and targets Android 15 (API 35+) and 16 (API 36).
@@ -85,7 +86,7 @@ The app communicates with the backend using the following endpoints (relative to
 
 - **POST** `/`: Sends the current location.
   - Payload: `{ "name": "...", "latitude": ..., "longitude": ..., "speed": ..., "heading": ... }`
-  - `speed` (m/s, from `Location.speed`) and `heading` (degrees clockwise from true north, from `Location.bearing`) are optional: they are only sent when the location fix has them (`hasSpeed()` / `hasBearing()`), otherwise the keys are omitted entirely.
+  - `speed` (m/s, from `Location.speed`) and `heading` (degrees clockwise from true north, from `Location.bearing`) are optional: they are only sent when the location fix has them (`hasSpeed()` / `hasBearing()`) and the **Send speed and heading** switch is on (the default), otherwise the keys are omitted entirely.
 - **GET** `/{name}`: Checks if data exists for a specific user name.
 - **DELETE** `/{name}`: Deletes all data associated with the user name.
 

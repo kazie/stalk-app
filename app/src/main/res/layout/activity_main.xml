@@ -42,6 +42,14 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="36dp" />
+
+        <!-- Toggle for sending speed and heading -->
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/sendSpeedSwitch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="@string/send_speed" />
     </LinearLayout>
 
     <!-- Bottom-aligned button -->
