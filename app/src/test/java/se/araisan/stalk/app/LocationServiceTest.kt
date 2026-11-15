@@ -7,13 +7,17 @@ import android.app.Service
 import android.content.Intent
 import android.location.Location
 import android.os.Looper
+import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationResult
+import com.google.android.gms.tasks.Task
+import com.google.android.gms.tasks.Tasks
 import io.kotest.matchers.longs.shouldBeGreaterThan
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -25,8 +29,53 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.Implementation
 import org.robolectric.annotation.Implements
 import org.robolectric.shadows.ShadowService
+import java.lang.reflect.Proxy
 
 private const val NOTIFICATION_CHANNEL_ID = "LocationServiceChannel"
+
+/**
+ * A [FusedLocationProviderClient] that answers location update requests with [requestResult]
+ * right away and counts them in [requestCount]. Any other call fails the test.
+ */
+private class FakeFusedLocationClient(
+    private val requestResult: () -> Task<Void> = { Tasks.forResult(null) },
+) {
+    var requestCount = 0
+        private set
+
+    val client: FusedLocationProviderClient =
+        Proxy.newProxyInstance(
+            FusedLocationProviderClient::class.java.classLoader,
+            arrayOf(FusedLocationProviderClient::class.java),
+        ) { proxy, method, args ->
+            when (method.name) {
+                "requestLocationUpdates" -> {
+                    requestCount++
+                    requestResult()
+                }
+
+                "removeLocationUpdates" -> {
+                    Tasks.forResult<Void>(null)
+                }
+
+                "equals" -> {
+                    proxy === args?.get(0)
+                }
+
+                "hashCode" -> {
+                    System.identityHashCode(proxy)
+                }
+
+                "toString" -> {
+                    "FakeFusedLocationClient"
+                }
+
+                else -> {
+                    throw UnsupportedOperationException("FakeFusedLocationClient.${method.name}")
+                }
+            }
+        } as FusedLocationProviderClient
+}
 
 /** Simulates Android 14+ refusing a location foreground service started from the background. */
 @Implements(Service::class)
@@ -42,6 +91,8 @@ class RefusingForegroundService : ShadowService() {
 @Config(sdk = [34])
 class LocationServiceTest {
     private val app = RuntimeEnvironment.getApplication()
+    private val productionClientFactory = LocationService.fusedLocationClientFactory
+    private var fakeClient = FakeFusedLocationClient()
 
     @Before
     fun setUp() {
@@ -52,6 +103,13 @@ class LocationServiceTest {
             .apply()
         // Static in-process flag; reset so a previous test's service doesn't leak into this one.
         LocationService.isRunning = false
+        // The real client has no Play Services under Robolectric and fails at an unpredictable moment.
+        LocationService.fusedLocationClientFactory = { fakeClient.client }
+    }
+
+    @After
+    fun tearDown() {
+        LocationService.fusedLocationClientFactory = productionClientFactory
     }
 
     @Test
@@ -92,8 +150,21 @@ class LocationServiceTest {
         shadowOf(Looper.getMainLooper()).idle()
 
         // Passes the permission gate and requests updates instead of stopping itself.
+        fakeClient.requestCount shouldBe 1
         shadowOf(controller.get()).isStoppedBySelf shouldBe false
         LocationService.isRunning shouldBe true
+    }
+
+    @Test
+    fun `onCreate stops the service when requesting location updates fails`() {
+        fakeClient = FakeFusedLocationClient { Tasks.forException(IllegalStateException("no location")) }
+        shadowOf(app).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+
+        val controller = Robolectric.buildService(LocationService::class.java).create()
+        shadowOf(Looper.getMainLooper()).idle()
+
+        fakeClient.requestCount shouldBe 1
+        shadowOf(controller.get()).isStoppedBySelf shouldBe true
     }
 
     @Test
