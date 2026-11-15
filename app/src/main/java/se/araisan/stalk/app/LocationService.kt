@@ -6,6 +6,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.location.Location
 import android.os.IBinder
@@ -40,6 +41,15 @@ class LocationService : Service() {
         @Volatile
         var isRunning = false
             @VisibleForTesting internal set
+
+        /**
+         * Creates the location client. Tests swap this for a fake: under Robolectric the real
+         * client fails asynchronously (no Play Services), which races with test assertions.
+         */
+        @VisibleForTesting
+        internal var fusedLocationClientFactory: (Context) -> FusedLocationProviderClient =
+            LocationServices::getFusedLocationProviderClient
+
         private const val NOTIFICATION_CHANNEL_ID = "LocationServiceChannel"
         private const val NOTIFICATION_ID = 1
     }
@@ -52,7 +62,7 @@ class LocationService : Service() {
     override fun onCreate() {
         super.onCreate()
 
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        fusedLocationClient = fusedLocationClientFactory(this)
 
         // Define the location callback
         locationCallback =
