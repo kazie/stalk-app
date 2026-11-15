@@ -27,8 +27,8 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v6
         with:
-          distribution: 'zulu' # Or 'temurin'
-          java-version: '17'   # Project targets JDK 17
+          distribution: 'temurin' # Same vendor as flake.nix (temurin-bin-25)
+          java-version: '25'      # Runs Gradle; app compiles with jvmToolchain(17)
           cache: gradle
 
       # Step 3: Android SDK is preinstalled on ubuntu-latest runners, including
