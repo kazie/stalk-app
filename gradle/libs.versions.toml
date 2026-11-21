@@ -18,7 +18,7 @@ kotest = "6.2.7"
 kover = "0.9.11"
 detekt = "2.0.0-alpha.6"
 junit = "4.13.2"
-robolectric = "4.17"
+robolectric = "4.18.1"
 junitVintageEngine = "6.1.3"
 carApp = "1.7.0"
 
